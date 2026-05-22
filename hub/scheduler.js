@@ -41,6 +41,17 @@ function normalizeCronExecutionContext(value) {
   };
 }
 
+function getCronExecutor(job) {
+  if (job?.executor?.kind) return job.executor;
+  return {
+    kind: "agent_session",
+    agentId: job?.actorAgentId || job?.legacyRef?.agentId || null,
+    prompt: job?.prompt || "",
+    model: job?.model,
+    executionContext: job?.executionContext || null,
+  };
+}
+
 export class Scheduler {
   /**
    * @param {object} opts
@@ -218,18 +229,22 @@ export class Scheduler {
   // ──────────── 执行 ────────────
 
   async _executeCronJob(job) {
-    const actorAgentId = job.actorAgentId || job.legacyRef?.agentId || null;
+    const executor = getCronExecutor(job);
+    if (executor.kind !== "agent_session") {
+      throw new Error(`unsupported automation executor: ${executor.kind}`);
+    }
+    const actorAgentId = executor.agentId || job.actorAgentId || job.legacyRef?.agentId || null;
     if (!actorAgentId) {
       throw new Error(`cron job ${job.id} missing actorAgentId`);
     }
-    return this._executeCronJobForAgent(actorAgentId, job);
+    return this._executeCronJobForAgent(actorAgentId, job, executor);
   }
 
   /**
    * 执行某个 agent 的 cron 任务（active 或非 active 均可）
    * 同一 agent 同时只运行一个 cron，防止并发写冲突
    */
-  async _executeCronJobForAgent(agentId, job) {
+  async _executeCronJobForAgent(agentId, job, executor = getCronExecutor(job)) {
     // per-job 锁：同一 job 不并发，但同一 agent 的不同 job 可以并行
     if (this._executingJobs.has(job.id)) {
       log.log(`cron 跳过 ${job.id}：上一次仍在执行`);
@@ -241,6 +256,8 @@ export class Scheduler {
     this._executingJobs.set(job.id, ac);
     try {
       const isZh = getLocale().startsWith("zh");
+      const promptBody = executor.prompt || job.prompt || "";
+      const model = executor.model || job.model || undefined;
       const prompt = isZh
         ? [
             `[定时任务 ${job.id}: ${job.label}]`,
@@ -248,7 +265,7 @@ export class Scheduler {
             "**注意：这是系统自动触发的定时任务，不是用户发来的。**",
             "**不要在执行过程中创建新的定时任务。**",
             "",
-            job.prompt,
+            promptBody,
           ].join("\n")
         : [
             `[Cron job ${job.id}: ${job.label}]`,
@@ -256,20 +273,20 @@ export class Scheduler {
             "**Note: This is an automated cron job, NOT a user message.**",
             "**Do not create new cron jobs during execution.**",
             "",
-            job.prompt,
+            promptBody,
           ].join("\n");
       await this._executeActivityForAgent(agentId, prompt, "cron", job.label, {
-        model: job.model || undefined,
+        model,
         signal: ac.signal,
-        ...this._cronExecutionOptions(job),
+        ...this._cronExecutionOptions(job, executor),
       });
     } finally {
       this._executingJobs.delete(job.id);
     }
   }
 
-  _cronExecutionOptions(job) {
-    const ctx = normalizeCronExecutionContext(job.executionContext);
+  _cronExecutionOptions(job, executor = getCronExecutor(job)) {
+    const ctx = normalizeCronExecutionContext(executor.executionContext || job.executionContext);
     const opts = {};
     if (ctx.cwd) opts.cwd = ctx.cwd;
     opts.workspaceFolders = ctx.workspaceFolders;

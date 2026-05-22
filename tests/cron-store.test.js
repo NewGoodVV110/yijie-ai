@@ -244,6 +244,111 @@ describe("CronStore addJob 输入验证", () => {
   });
 });
 
+describe("Automation job read model", () => {
+  it("projects legacy cron prompt jobs to agent_session executor", () => {
+    const store = makeTmpStore();
+    const model = { id: "gpt-4o", provider: "openai" };
+    const executionContext = {
+      kind: "session_workspace",
+      cwd: "/workspace",
+      workspaceFolders: ["/workspace"],
+      sourceSessionPath: "/sessions/source.jsonl",
+      createdByAgentId: "hana",
+    };
+
+    const job = store.addJob({
+      type: "cron",
+      schedule: "0 9 * * *",
+      prompt: "summarize",
+      actorAgentId: "hana",
+      executionContext,
+      model,
+    });
+
+    expect(job.schemaVersion).toBe(2);
+    expect(job.trigger).toEqual({ kind: "cron", expression: "0 9 * * *" });
+    expect(job.executor).toMatchObject({
+      kind: "agent_session",
+      agentId: "hana",
+      prompt: "summarize",
+      model,
+      executionContext,
+    });
+    expect(job.createdBy).toEqual({ kind: "agent", agentId: "hana" });
+  });
+
+  it("does not bind missing legacy actor to the focused agent", () => {
+    const store = makeTmpStore();
+
+    const job = store.addJob({
+      type: "cron",
+      schedule: "0 9 * * *",
+      prompt: "summarize",
+    });
+
+    expect(job.executor).toMatchObject({
+      kind: "agent_session",
+      agentId: null,
+      prompt: "summarize",
+    });
+    expect(job.createdBy).toEqual({ kind: "unknown" });
+  });
+
+  it("keeps trigger and agent_session executor synced when legacy fields update", () => {
+    const store = makeTmpStore();
+    const job = store.addJob({
+      type: "cron",
+      schedule: "0 9 * * *",
+      prompt: "morning summary",
+      actorAgentId: "hana",
+      model: { id: "gpt-4o", provider: "openai" },
+    });
+
+    const updated = store.updateJob(job.id, {
+      schedule: "30 18 * * *",
+      prompt: "evening summary",
+      model: { id: "gpt-4.1", provider: "openai" },
+    });
+
+    expect(updated.trigger).toEqual({ kind: "cron", expression: "30 18 * * *" });
+    expect(updated.executor).toMatchObject({
+      kind: "agent_session",
+      agentId: "hana",
+      prompt: "evening summary",
+      model: { id: "gpt-4.1", provider: "openai" },
+    });
+  });
+
+  it("writes automation fields back when loading legacy jobs", () => {
+    const { jobsPath, runsDir } = makeTmpPaths();
+    fs.mkdirSync(path.dirname(jobsPath), { recursive: true });
+    fs.writeFileSync(jobsPath, JSON.stringify({
+      jobs: [{
+        id: "job_1",
+        type: "cron",
+        schedule: "0 9 * * *",
+        prompt: "legacy",
+        enabled: true,
+        actorAgentId: "hana",
+        model: "",
+        consecutiveErrors: 0,
+      }],
+      nextNum: 2,
+    }, null, 2), "utf-8");
+
+    new CronStore(jobsPath, runsDir);
+
+    const [job] = JSON.parse(fs.readFileSync(jobsPath, "utf-8")).jobs;
+    expect(job.schemaVersion).toBe(2);
+    expect(job.trigger).toEqual({ kind: "cron", expression: "0 9 * * *" });
+    expect(job.executor).toMatchObject({
+      kind: "agent_session",
+      agentId: "hana",
+      prompt: "legacy",
+    });
+  });
+});
+
 // ════════════════════════════════════════════
 //  updateJob 字段白名单
 // ════════════════════════════════════════════

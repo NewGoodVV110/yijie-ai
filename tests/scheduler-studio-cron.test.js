@@ -139,4 +139,63 @@ describe("Scheduler studio cron", () => {
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("executes agent_session cron jobs through the executor read model", async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "hana-scheduler-cron-"));
+    try {
+      const agentsDir = path.join(root, "agents");
+      fs.mkdirSync(path.join(agentsDir, "agent-a"), { recursive: true });
+      const activityStore = { add: vi.fn() };
+      const executeIsolated = vi.fn(async () => ({ sessionPath: "", error: null }));
+      const engine = {
+        agentsDir,
+        agents: new Map(),
+        getStudioCronStore: () => ({ listJobs: vi.fn(() => []) }),
+        getHeartbeatMaster: () => false,
+        ensureAgentRuntime: vi.fn(async (agentId) => ({ id: agentId, agentName: agentId })),
+        getAgent: vi.fn((agentId) => ({ id: agentId, agentName: agentId })),
+        executeIsolated,
+        summarizeActivity: vi.fn(),
+        getActivityStore: vi.fn(() => activityStore),
+        emitDevLog: vi.fn(),
+      };
+      const eventBus = { emit: vi.fn() };
+      const scheduler = new Scheduler({ hub: { engine, eventBus } });
+      scheduler.start();
+      const executeJob = createCronSchedulerMock.mock.calls[0][0].executeJob;
+
+      await executeJob({
+        id: "studio_job_2",
+        label: "Executor job",
+        trigger: { kind: "cron", expression: "0 9 * * *" },
+        executor: {
+          kind: "agent_session",
+          agentId: "agent-a",
+          prompt: "run from executor",
+          model: { id: "gpt-test", provider: "openai" },
+          executionContext: {
+            kind: "session_workspace",
+            cwd: "/workspace/a",
+            workspaceFolders: ["/workspace/ref"],
+            sourceSessionPath: "/sessions/a.jsonl",
+            createdByAgentId: "agent-a",
+          },
+        },
+      });
+
+      expect(executeIsolated).toHaveBeenCalledWith(
+        expect.stringContaining("run from executor"),
+        expect.objectContaining({
+          agentId: "agent-a",
+          cwd: "/workspace/a",
+          workspaceFolders: ["/workspace/ref"],
+          parentSessionPath: "/sessions/a.jsonl",
+          model: { id: "gpt-test", provider: "openai" },
+          activityType: "cron",
+        }),
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
