@@ -2658,10 +2658,10 @@ function buildScreenshotHTML(payload) {
       background: transparent;
     }
     .screenshot-cover-frame {
-      width: var(--screenshot-cover-display-width, 100%);
+      width: 100%;
       height: var(--screenshot-cover-height, 320px);
       overflow: hidden;
-      margin: 0 auto;
+      margin: 0;
       background: transparent;
     }
     .screenshot-cover-frame img {

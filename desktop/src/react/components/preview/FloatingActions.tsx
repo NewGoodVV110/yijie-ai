@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './FloatingActions.module.css';
+import { COVER_GALLERY_ITEMS, type CoverGalleryItem } from './cover-gallery-assets';
 import {
   applyMarkdownCoverImage,
+  applyMarkdownCoverPreset,
   dispatchCoverNotice,
   requestMarkdownCoverGeneration,
 } from '../../utils/markdown-cover-generation';
@@ -19,16 +21,15 @@ interface Props {
   onToggleMarkdownPreview?: () => void;
 }
 
-function CoverArtboardIcon() {
+function CoverPaletteIcon() {
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="4" y="4" width="16" height="12" rx="1.5" />
-      <path d="M8.5 20l2-4" />
-      <path d="M15.5 20l-2-4" />
-      <path d="M9 20h6" />
-      <circle cx="8.5" cy="8.5" r="1.2" />
-      <path d="M6.8 14l3.4-3.1 2.6 2 2-2.2 2.4 3.3" />
+      <path d="M12 3.5a8.5 8.5 0 0 0 0 17h1.4a1.55 1.55 0 0 0 1.1-2.65l-.18-.18a1.18 1.18 0 0 1 .83-2.02H17a4 4 0 0 0 4-4c0-4.5-3.86-8.15-9-8.15z" />
+      <circle cx="7.7" cy="10.2" r="1" />
+      <circle cx="10.2" cy="7.4" r="1" />
+      <circle cx="14" cy="7.6" r="1" />
+      <circle cx="16.7" cy="10.3" r="1" />
     </svg>
   );
 }
@@ -79,22 +80,25 @@ export function FloatingActions({
   const [copyLabel, setCopyLabel] = useState<string | null>(null);
   const [coverBusy, setCoverBusy] = useState(false);
   const [coverMenuOpen, setCoverMenuOpen] = useState(false);
+  const [coverGalleryOpen, setCoverGalleryOpen] = useState(false);
   const [coverToolEnabled, setCoverToolEnabled] = useState(false);
   const currentAgentId = useStore(s => s.currentAgentId);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const coverMenuRef = useRef<HTMLDivElement | null>(null);
+  const floatingActionsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   useEffect(() => {
-    if (!coverMenuOpen) return;
+    if (!coverMenuOpen && !coverGalleryOpen) return;
     const close = (event: PointerEvent) => {
-      if (coverMenuRef.current?.contains(event.target as Node)) return;
+      if (floatingActionsRef.current?.contains(event.target as Node)) return;
       setCoverMenuOpen(false);
+      setCoverGalleryOpen(false);
     };
     window.addEventListener('pointerdown', close, true);
     return () => window.removeEventListener('pointerdown', close, true);
-  }, [coverMenuOpen]);
+  }, [coverGalleryOpen, coverMenuOpen]);
 
   useEffect(() => {
     if (contentType !== 'markdown' || !filePath || !currentAgentId) {
@@ -178,13 +182,30 @@ export function FloatingActions({
 
   const handlePresetCover = useCallback(() => {
     setCoverMenuOpen(false);
-    dispatchCoverNotice('小花美术馆稍后开放。', 'error');
+    setCoverGalleryOpen(true);
   }, []);
+
+  const handleApplyPresetCover = useCallback(async (item: CoverGalleryItem) => {
+    if (!filePath || contentType !== 'markdown') return;
+    setCoverBusy(true);
+    try {
+      const result = await applyMarkdownCoverPreset({ filePath, presetId: item.id });
+      dispatchCoverNotice(
+        result.ok ? `已应用「${item.title}」为 cover。` : `Cover 应用失败：${result.error}`,
+        result.ok ? 'success' : 'error',
+      );
+      if (result.ok) setCoverGalleryOpen(false);
+    } catch (err) {
+      dispatchCoverNotice(`Cover 应用失败：${err instanceof Error ? err.message : String(err)}`, 'error');
+    } finally {
+      setCoverBusy(false);
+    }
+  }, [contentType, filePath]);
 
   const t = window.t ?? ((p: string) => p);
 
   return (
-    <div className={styles.floatingActions} data-react-managed>
+    <div className={styles.floatingActions} data-react-managed ref={floatingActionsRef}>
       <button className={styles.actionBtn} onClick={handleCopy}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
@@ -201,7 +222,7 @@ export function FloatingActions({
             aria-label="制作 cover"
             disabled={coverBusy}
           >
-            <CoverArtboardIcon />
+            <CoverPaletteIcon />
           </button>
           {coverMenuOpen && (
             <div className={styles.coverMenu}>
@@ -219,6 +240,45 @@ export function FloatingActions({
               </button>
             </div>
           )}
+        </div>
+      )}
+      {coverGalleryOpen && (
+        <div className={styles.coverGalleryCard} role="dialog" aria-label="小花美术馆">
+          <div className={styles.coverGalleryHeader}>
+            <div>
+              <div className={styles.coverGalleryTitle}>小花美术馆</div>
+            </div>
+            <button
+              type="button"
+              className={styles.coverGalleryClose}
+              onClick={() => setCoverGalleryOpen(false)}
+              aria-label="关闭小花美术馆"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M18 6L6 18" />
+                <path d="M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className={styles.coverGalleryGrid}>
+            {COVER_GALLERY_ITEMS.map(item => (
+              <button
+                key={item.id}
+                type="button"
+                className={styles.coverGalleryItem}
+                onClick={() => handleApplyPresetCover(item)}
+                disabled={coverBusy}
+                aria-label={item.title}
+                title={item.title}
+              >
+                <span className={styles.coverGalleryThumb}>
+                  <img src={item.src} alt="" draggable={false} loading="lazy" decoding="async" />
+                </span>
+                <span className={styles.coverGalleryName}>{item.title}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
       {showMarkdownPreviewToggle && (

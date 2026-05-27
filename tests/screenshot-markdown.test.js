@@ -43,8 +43,9 @@ describe('screenshot markdown renderer helpers', () => {
     ].join('\n'), { sourceFilePath: '/vault/notes/day.md' });
 
     expect(md.render).toHaveBeenCalledWith('# Demo', { sourceFilePath: '/vault/notes/day.md' });
+    expect(html.startsWith('<figure class="screenshot-cover"')).toBe(true);
     expect(html).toContain('class="screenshot-cover"');
-    expect(html).toContain('--screenshot-cover-display-width:72%');
+    expect(html).not.toContain('--screenshot-cover-display-width');
     expect(html).toContain('--screenshot-cover-height:280px');
     expect(html).toContain('class="screenshot-cover-frame"');
     expect(html).toContain('object-position:50% 64%');

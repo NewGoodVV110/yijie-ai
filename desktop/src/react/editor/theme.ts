@@ -51,6 +51,9 @@ export const markdownTheme = EditorView.theme({
   },
   '.cm-markdown-cover.cm-markdown-cover-top': {
     marginTop: 'calc(0px - var(--space-md))',
+    marginLeft: 'calc(0px - var(--editor-markdown-content-padding-x))',
+    marginRight: 'calc(0px - var(--editor-markdown-content-padding-x))',
+    width: 'calc(100% + var(--editor-markdown-content-padding-x) + var(--editor-markdown-content-padding-x))',
   },
   '.cm-markdown-cover::after': {
     content: '""',
