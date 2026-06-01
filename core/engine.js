@@ -643,9 +643,9 @@ export class HanaEngine {
   }
 
   async abortAllStreaming() { return this._sessionCoord.abortAllStreaming(); }
-  isBridgeSessionStreaming(key) { return this._bridge?.isSessionStreaming(key) ?? false; }
+  isBridgeSessionStreaming(key, opts) { return this._bridge?.isSessionStreaming(key, opts) ?? false; }
   async abortBridgeSession(key) { return this._bridge?.abortSession(key) ?? false; }
-  steerBridgeSession(key, text) { return this._bridge?.steerSession(key, text) ?? false; }
+  steerBridgeSession(key, text, opts) { return this._bridge?.steerSession(key, text, opts) ?? false; }
   get bridgeSessionManager() { return this._bridge; }
   recordSessionCustomEntry(sessionPath, customType, data) {
     const bridgeResult = this._bridge?.recordCustomEntryForSessionPath?.(sessionPath, customType, data);
