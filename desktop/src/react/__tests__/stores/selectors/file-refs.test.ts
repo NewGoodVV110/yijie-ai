@@ -435,6 +435,40 @@ describe('selectSessionFiles', () => {
     expect(refs.map(r => r.name)).toEqual(['a.png', 'b.png']);
   });
 
+  it('registry 文件和消息附件指向同一路径时只显示干净 display label', () => {
+    const items: ChatListItem[] = [{
+      type: 'message',
+      data: {
+        id: 'voice-msg',
+        role: 'user',
+        attachments: [{
+          path: '/cache/录音 6_mpyhzdno_0ad8830b.wav',
+          name: '录音 6_mpyhzdno_0ad8830b.wav',
+          isDir: false,
+        }],
+      },
+    }];
+    const refs = selectSessionFiles(sessionState(items, '/s/voice', [{
+      fileId: 'sf_voice',
+      filePath: '/cache/录音 6_mpyhzdno_0ad8830b.wav',
+      label: '录音 6.wav',
+      filename: '录音 6_mpyhzdno_0ad8830b.wav',
+      ext: 'wav',
+      mime: 'audio/wav',
+      kind: 'audio',
+      status: 'available',
+    }]), '/s/voice');
+
+    expect(refs).toHaveLength(1);
+    expect(refs[0]).toMatchObject({
+      fileId: 'sf_voice',
+      source: 'session-registry',
+      name: '录音 6.wav',
+      path: '/cache/录音 6_mpyhzdno_0ad8830b.wav',
+      kind: 'audio',
+    });
+  });
+
   it('跨多消息按消息顺序', () => {
     const items: ChatListItem[] = [
       { type: 'message', data: { id: '1', role: 'user', attachments: [{ path: '/1.png', name: '1.png', isDir: false }] } },

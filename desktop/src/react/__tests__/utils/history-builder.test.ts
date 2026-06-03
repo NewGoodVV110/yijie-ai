@@ -75,7 +75,7 @@ describe('buildItemsFromHistory user image restoration', () => {
     expect(second.data.text).toBe('just answer directly');
   });
 
-  it('把 attached_image 标记恢复成图片附件，并从正文隐藏', () => {
+  it('把 media-only attached_image 占位恢复成裸图片附件', () => {
     const items = buildItemsFromHistory({
       messages: [{
         id: 'u1',
@@ -88,8 +88,8 @@ describe('buildItemsFromHistory user image restoration', () => {
     const first = items[0];
     expect(first.type).toBe('message');
     if (first.type !== 'message') throw new Error('expected message');
-    expect(first.data.text).toBe('(看图)');
-    expect(first.data.textHtml).not.toContain('attached_image');
+    expect(first.data.text).toBe('');
+    expect(first.data.textHtml).toBeUndefined();
     expect(first.data.attachments).toEqual([{
       path: '/Users/test/.hanako/attachments/upload-abc.png',
       name: 'upload-abc.png',
@@ -133,6 +133,27 @@ describe('buildItemsFromHistory user image restoration', () => {
     if (first.type !== 'message') throw new Error('expected message');
     expect(first.data.text).toBe('听一下');
     expect(first.data.textHtml).not.toContain('attached_audio');
+    expect(first.data.attachments).toEqual([{
+      path: '/Users/test/.hanako/session-files/voice.wav',
+      name: 'voice.wav',
+      isDir: false,
+    }]);
+  });
+
+  it('把 media-only attached_audio 占位恢复成裸音频附件', () => {
+    const items = buildItemsFromHistory({
+      messages: [{
+        id: 'u1',
+        role: 'user',
+        content: '[attached_audio: /Users/test/.hanako/session-files/voice.wav]\n（听音频）',
+      }],
+    });
+
+    const first = items[0];
+    expect(first.type).toBe('message');
+    if (first.type !== 'message') throw new Error('expected message');
+    expect(first.data.text).toBe('');
+    expect(first.data.textHtml).toBeUndefined();
     expect(first.data.attachments).toEqual([{
       path: '/Users/test/.hanako/session-files/voice.wav',
       name: 'voice.wav',

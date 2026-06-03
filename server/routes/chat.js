@@ -1128,11 +1128,6 @@ export function createChatRoute(engine, hub, { upgradeWebSocket }) {
                 const skillNote = msg.skills.map(s => `[Use skill: ${s}]`).join('\n');
                 promptText = `${skillNote}\n${promptText}`;
               }
-              if (!promptText.trim()) {
-                if (msg.images?.length) promptText = t("error.viewImage");
-                else if (msg.videos?.length) promptText = t("error.viewVideo");
-                else if (msg.audios?.length) promptText = t("error.listenAudio");
-              }
               debugLog()?.log("ws", `user message (${promptText.length} chars, ${msg.images?.length || 0} images, ${msg.videos?.length || 0} videos, ${msg.audios?.length || 0} audios)`);
               // Phase 2: 客户端可指定 sessionPath，否则用焦点 session
               const promptSessionPath = requireSessionPath(msg, ws); if (!promptSessionPath) return;

@@ -190,6 +190,46 @@ function seedSession() {
   useStore.getState().initSession('/session/media.jsonl', [], false);
 }
 
+function installAudioCaptureMocks() {
+  type MockAudioProcessor = {
+    onaudioprocess: ((event: { inputBuffer: { getChannelData: () => Float32Array } }) => void) | null;
+    connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
+  };
+  let processor: MockAudioProcessor | null = null;
+  const stopTrack = vi.fn();
+  const stream = {
+    getTracks: vi.fn(() => [{ stop: stopTrack }]),
+  };
+  class AudioContextMock {
+    sampleRate = 24000;
+    state = 'running';
+    destination = {};
+    createMediaStreamSource = vi.fn(() => ({ connect: vi.fn(), disconnect: vi.fn() }));
+    createScriptProcessor = vi.fn(() => {
+      processor = {
+        onaudioprocess: null,
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      };
+      return processor;
+    });
+    createGain = vi.fn(() => ({ gain: { value: 0 }, connect: vi.fn(), disconnect: vi.fn() }));
+    close = vi.fn(async () => {});
+  }
+  Object.defineProperty(navigator, 'mediaDevices', {
+    configurable: true,
+    value: { getUserMedia: vi.fn(async () => stream) },
+  });
+  vi.stubGlobal('AudioContext', AudioContextMock);
+  return {
+    get processor() {
+      return processor;
+    },
+    stopTrack,
+  };
+}
+
 describe('InputArea media send', () => {
   afterEach(() => {
     cleanup();
@@ -383,38 +423,8 @@ describe('InputArea media send', () => {
     });
   });
 
-  it('registers recorded audio as an attached file after saving the recording', async () => {
-    type MockAudioProcessor = {
-      onaudioprocess: ((event: { inputBuffer: { getChannelData: () => Float32Array } }) => void) | null;
-      connect: ReturnType<typeof vi.fn>;
-      disconnect: ReturnType<typeof vi.fn>;
-    };
-    let processor: MockAudioProcessor | null = null;
-    const stopTrack = vi.fn();
-    const stream = {
-      getTracks: vi.fn(() => [{ stop: stopTrack }]),
-    };
-    class AudioContextMock {
-      sampleRate = 24000;
-      state = 'running';
-      destination = {};
-      createMediaStreamSource = vi.fn(() => ({ connect: vi.fn(), disconnect: vi.fn() }));
-      createScriptProcessor = vi.fn(() => {
-        processor = {
-          onaudioprocess: null,
-          connect: vi.fn(),
-          disconnect: vi.fn(),
-        };
-        return processor;
-      });
-      createGain = vi.fn(() => ({ gain: { value: 0 }, connect: vi.fn(), disconnect: vi.fn() }));
-      close = vi.fn(async () => {});
-    }
-    Object.defineProperty(navigator, 'mediaDevices', {
-      configurable: true,
-      value: { getUserMedia: vi.fn(async () => stream) },
-    });
-    vi.stubGlobal('AudioContext', AudioContextMock);
+  it('sends recorded audio immediately after saving the recording', async () => {
+    const audioMocks = installAudioCaptureMocks();
     mocks.hanaFetch.mockImplementation(async (path: string) => {
       if (path === '/api/upload-blob') {
         return new Response(JSON.stringify({
@@ -450,10 +460,10 @@ describe('InputArea media send', () => {
 
     await waitFor(() => {
       expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
-      expect(processor).not.toBeNull();
+      expect(audioMocks.processor).not.toBeNull();
       expect(screen.getByTestId('record-audio').textContent).toBe('stop');
     });
-    const activeProcessor = processor as unknown as MockAudioProcessor;
+    const activeProcessor = audioMocks.processor!;
     activeProcessor.onaudioprocess?.({
       inputBuffer: {
         getChannelData: () => new Float32Array([0.12, -0.12, 0.08, -0.08]),
@@ -466,14 +476,91 @@ describe('InputArea media send', () => {
       expect(mocks.hanaFetch).toHaveBeenCalledWith('/api/upload-blob', expect.objectContaining({
         method: 'POST',
       }));
-      expect(useStore.getState().attachedFiles[0]).toMatchObject({
+      expect(mocks.wsSend).toHaveBeenCalledTimes(1);
+    });
+    const payload = JSON.parse(String(mocks.wsSend.mock.calls[0][0]));
+    expect(payload.text).toBe('');
+    expect(payload.audios).toEqual([{
+      type: 'audio',
+      data: expect.any(String),
+      mimeType: 'audio/wav',
+    }]);
+    expect(payload.displayMessage).toMatchObject({
+      text: '',
+      attachments: [{
         fileId: 'sf_recording',
         path: '/tmp/hana/session-files/recording.wav',
         name: '录音 1.wav',
+        isDir: false,
         mimeType: 'audio/wav',
-      });
+      }],
     });
-    expect(stopTrack).toHaveBeenCalled();
+    expect(useStore.getState().attachedFiles).toEqual([]);
+    expect(audioMocks.stopTrack).toHaveBeenCalled();
+  });
+
+  it('starts recording from the app-local voice shortcut only on the focused chat page', async () => {
+    installAudioCaptureMocks();
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+    useStore.setState({
+      attachedFiles: [],
+      currentTab: 'chat',
+      settingsModal: { open: false, activeTab: 'agent' },
+      mediaViewer: null,
+      skillViewerData: null,
+      channelCreateOverlayVisible: false,
+      models: [{
+        id: 'mimo-v2.5',
+        provider: 'mimo',
+        name: 'MiMo V2.5',
+        api: 'openai-completions',
+        baseUrl: 'https://api.xiaomimimo.com/v1',
+        audio: true,
+        audioTransport: 'mimo-input-audio',
+        audioTransportSupported: true,
+        input: ['text'],
+        isCurrent: true,
+      }],
+    } as never);
+
+    render(React.createElement(InputArea));
+
+    fireEvent.keyDown(window, { key: 'm', ctrlKey: true, shiftKey: true });
+
+    await waitFor(() => {
+      expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('ignores the app-local voice shortcut while settings is open', () => {
+    installAudioCaptureMocks();
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+    useStore.setState({
+      attachedFiles: [],
+      currentTab: 'chat',
+      settingsModal: { open: true, activeTab: 'agent' },
+      mediaViewer: null,
+      skillViewerData: null,
+      channelCreateOverlayVisible: false,
+      models: [{
+        id: 'mimo-v2.5',
+        provider: 'mimo',
+        name: 'MiMo V2.5',
+        api: 'openai-completions',
+        baseUrl: 'https://api.xiaomimimo.com/v1',
+        audio: true,
+        audioTransport: 'mimo-input-audio',
+        audioTransportSupported: true,
+        input: ['text'],
+        isCurrent: true,
+      }],
+    } as never);
+
+    render(React.createElement(InputArea));
+
+    fireEvent.keyDown(window, { key: 'm', ctrlKey: true, shiftKey: true });
+
+    expect(navigator.mediaDevices.getUserMedia).not.toHaveBeenCalled();
   });
 
   it('keeps audio attachments on the legacy text path for unsupported models', async () => {

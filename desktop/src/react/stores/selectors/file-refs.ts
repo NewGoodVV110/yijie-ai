@@ -287,15 +287,16 @@ function compactResourceRef(resource: ResourceEnvelope | undefined): FileRef['re
   };
 }
 
-function fileIdentity(fileId?: string, filePath?: string): string | null {
-  if (fileId) return `id:${fileId}`;
-  if (filePath) return `path:${filePath}`;
-  return null;
+function fileIdentityKeys(fileId?: string, filePath?: string): string[] {
+  const keys: string[] = [];
+  if (fileId) keys.push(`id:${fileId}`);
+  if (filePath) keys.push(`path:${filePath}`);
+  return keys;
 }
 
 function pushUniqueFile(result: FileRef[], seen: Set<string>, ref: FileRef): void {
-  const key = fileIdentity(ref.fileId, ref.path);
-  if (key && seen.has(key)) return;
-  if (key) seen.add(key);
+  const keys = fileIdentityKeys(ref.fileId, ref.path);
+  if (keys.some(key => seen.has(key))) return;
+  for (const key of keys) seen.add(key);
   result.push(ref);
 }

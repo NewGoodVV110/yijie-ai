@@ -162,6 +162,25 @@ describe('ws-message-handler session-scoped desktop events', () => {
     expect(first.data.attachments).toEqual([{ path: '/tmp/a.png', name: 'a.png', isDir: false }]);
   });
 
+  it('session_user_message 保存附件-only 消息时不生成 textHtml', () => {
+    handleServerMessage({
+      type: 'session_user_message',
+      sessionPath: '/session/a.jsonl',
+      message: {
+        text: '',
+        attachments: [{ path: '/tmp/voice.wav', name: 'voice.wav', isDir: false, mimeType: 'audio/wav' }],
+      },
+    });
+
+    const items = useStore.getState().chatSessions['/session/a.jsonl']?.items || [];
+    const first = items[0];
+    expect(first?.type).toBe('message');
+    if (!first || first.type !== 'message') throw new Error('expected message item');
+    expect(first.data.text).toBe('');
+    expect(first.data.textHtml).toBeUndefined();
+    expect(first.data.attachments).toEqual([{ path: '/tmp/voice.wav', name: 'voice.wav', isDir: false, mimeType: 'audio/wav' }]);
+  });
+
   it('session_created 乐观插入后延迟刷新 session 列表，避免同一波事件重复全量拉取', async () => {
     vi.useFakeTimers();
 

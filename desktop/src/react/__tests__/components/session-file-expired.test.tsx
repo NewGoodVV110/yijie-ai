@@ -46,6 +46,7 @@ describe('expired session file presentation', () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -109,6 +110,82 @@ describe('expired session file presentation', () => {
     expect(screen.queryByRole('img', { name: 'old.png' })).not.toBeInTheDocument();
     expect(screen.getByText('old.png · 文件已过期')).toBeInTheDocument();
     expect(window.platform?.getFileUrl).not.toHaveBeenCalled();
+  });
+
+  it('renders attachment-only user messages without an empty text bubble', () => {
+    const { container } = render(
+      <UserMessage
+        showAvatar={false}
+        sessionPath="/sessions/main.jsonl"
+        readOnly
+        message={{
+          id: 'u-attachment-only',
+          role: 'user',
+          text: '',
+          attachments: [
+            {
+              fileId: 'sf_img',
+              path: '/cache/photo.png',
+              name: 'photo.png',
+              isDir: false,
+              mimeType: 'image/png',
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('img', { name: 'photo.png' })).toBeInTheDocument();
+    const userTextBubble = Array.from(container.querySelectorAll('div')).find((node) => {
+      const className = String(node.getAttribute('class') || '');
+      return className.includes('messageUser') && !className.includes('messageGroupUser');
+    });
+    expect(userTextBubble).toBeUndefined();
+  });
+
+  it('renders playable audio user attachments with a waveform chip', () => {
+    const audioInstances: Array<{ play: ReturnType<typeof vi.fn>; pause: ReturnType<typeof vi.fn> }> = [];
+    const AudioMock = vi.fn().mockImplementation(function MockAudio(this: {
+      play: ReturnType<typeof vi.fn>;
+      pause: ReturnType<typeof vi.fn>;
+      onended: (() => void) | null;
+      onerror: (() => void) | null;
+    }) {
+      this.play = vi.fn(() => Promise.resolve());
+      this.pause = vi.fn();
+      this.onended = null;
+      this.onerror = null;
+      audioInstances.push(this);
+    });
+    vi.stubGlobal('Audio', AudioMock);
+
+    render(
+      <UserMessage
+        showAvatar={false}
+        sessionPath="/sessions/main.jsonl"
+        readOnly
+        message={{
+          id: 'u-audio',
+          role: 'user',
+          text: '',
+          attachments: [
+            {
+              fileId: 'sf_audio',
+              path: '/cache/voice.wav',
+              name: 'voice.wav',
+              isDir: false,
+              mimeType: 'audio/wav',
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByText('voice.wav')).toBeInTheDocument();
+    expect(screen.getByTestId('audio-attachment-wave')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Play voice.wav'));
+    expect(AudioMock).toHaveBeenCalledWith('file:///cache/voice.wav');
+    expect(audioInstances[0].play).toHaveBeenCalledTimes(1);
   });
 
   it('renders assistant file actions as a split button with reveal and copy menu actions', async () => {

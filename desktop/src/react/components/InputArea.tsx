@@ -44,6 +44,7 @@ import {
   evaluateChatVideoSendPreflight,
   getModelAudioInputMode,
   notifyTextModelImageBlocked,
+  notifyTextModelAudioBlocked,
   notifyTextModelVideoBlocked,
 } from '../utils/chat-image-send-preflight';
 import { openProviderModelSettings } from '../utils/model-settings-navigation';
@@ -758,37 +759,85 @@ function InputAreaInner({ surface }: Required<InputAreaProps>) {
     window.setTimeout(restoreEditorFocus, 0);
   }, [inputLocked, restoreEditorFocus, surface]);
 
-  const insertRecordedAudioBadge = useCallback((file: {
+  const ensureVoiceSessionPath = useCallback(async (): Promise<string> => {
+    let sessionPath = useStore.getState().currentSessionPath;
+    if (sessionPath) return sessionPath;
+    if (!pendingNewSession) throw new Error('missing session path');
+    const ok = await ensureSession();
+    if (!ok) throw new Error('failed to create session');
+    loadSessions();
+    sessionPath = useStore.getState().currentSessionPath;
+    if (!sessionPath) throw new Error('missing session path');
+    return sessionPath;
+  }, [pendingNewSession]);
+
+  const sendVoiceAudioAttachment = useCallback(async (file: {
     fileId?: string;
     path: string;
     name: string;
     mimeType: string;
-  }) => {
-    addAttachedFile({
-      fileId: file.fileId,
-      path: file.path,
-      name: file.name,
-      isDirectory: false,
-      mimeType: file.mimeType,
-    });
-    if (!editor) {
-      return;
+    base64Data: string;
+  }): Promise<boolean> => {
+    if (inputLocked || !connected || isStreaming || sending || modelSwitching || useStore.getState().pendingSessionSwitchPath) {
+      return false;
     }
-    editor.chain()
-      .focus()
-      .insertContent({
-        type: 'fileBadge',
-        attrs: {
-          fileId: file.fileId || null,
-          path: file.path,
-          name: file.name,
-          isDirectory: false,
-          mimeType: file.mimeType,
+
+    const audioPreflight = await evaluateChatAudioSendPreflight({
+      attachments: [file],
+      model: currentModelInfo,
+    });
+    if (!audioPreflight.ok) {
+      notifyTextModelAudioBlocked({
+        t,
+        addToast: useStore.getState().addToast,
+        openSettings: () => openProviderModelSettings(currentModelInfo?.provider),
+      });
+      return false;
+    }
+
+    setSending(true);
+    try {
+      const sessionPath = await ensureVoiceSessionPath();
+      const ws = getWebSocket();
+      if (!ws || typeof ws.send !== 'function') {
+        throw new Error('websocket unavailable');
+      }
+      const mimeType = chatAudioMimeTypeForName(file.name, file.mimeType);
+      ws.send(JSON.stringify({
+        type: 'prompt',
+        text: '',
+        sessionPath,
+        uiContext: collectUiContext(useStore.getState()),
+        displayMessage: {
+          text: '',
+          attachments: [{
+            fileId: file.fileId,
+            path: file.path,
+            name: file.name,
+            isDir: false,
+            mimeType,
+          }],
         },
-      })
-      .insertContent(' ')
-      .run();
-  }, [addAttachedFile, editor]);
+        audios: [{
+          type: 'audio',
+          data: file.base64Data,
+          mimeType,
+        }],
+      }));
+      return true;
+    } finally {
+      setSending(false);
+    }
+  }, [
+    connected,
+    currentModelInfo,
+    ensureVoiceSessionPath,
+    inputLocked,
+    isStreaming,
+    modelSwitching,
+    sending,
+    t,
+  ]);
 
   const stopAudioRecording = useCallback(async ({ discard = false }: { discard?: boolean } = {}) => {
     const runtime = audioRecorderRef.current;
@@ -824,6 +873,7 @@ function InputAreaInner({ surface }: Required<InputAreaProps>) {
       const index = audioRecordingSeqRef.current + 1;
       audioRecordingSeqRef.current = index;
       const name = t('input.recordedAudioName', { index });
+      const sessionPath = await ensureVoiceSessionPath();
       const res = await hanaFetch('/api/upload-blob', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -831,7 +881,7 @@ function InputAreaInner({ surface }: Required<InputAreaProps>) {
           name,
           base64Data,
           mimeType: 'audio/wav',
-          ...(useStore.getState().currentSessionPath ? { sessionPath: useStore.getState().currentSessionPath } : {}),
+          sessionPath,
         }),
       });
       const data = await res.json();
@@ -839,12 +889,16 @@ function InputAreaInner({ surface }: Required<InputAreaProps>) {
       if (!upload?.dest) {
         throw new Error(upload?.error || 'audio upload failed');
       }
-      insertRecordedAudioBadge({
+      const sent = await sendVoiceAudioAttachment({
         fileId: upload.fileId,
         path: upload.dest,
         name: upload.name || name,
         mimeType: 'audio/wav',
+        base64Data,
       });
+      if (!sent) {
+        throw new Error('audio send failed');
+      }
       setAudioRecorderOpen(false);
       setAudioRecordingError(null);
     } catch (err) {
@@ -857,10 +911,10 @@ function InputAreaInner({ surface }: Required<InputAreaProps>) {
       setAudioRecordingElapsed(0);
       restoreEditorFocus();
     }
-  }, [addToast, insertRecordedAudioBadge, restoreEditorFocus, t]);
+  }, [addToast, ensureVoiceSessionPath, restoreEditorFocus, sendVoiceAudioAttachment, t]);
 
   const startAudioRecording = useCallback(async () => {
-    if (inputLocked || !showAudioInput) return;
+    if (inputLocked || !showAudioInput || !connected || isStreaming || sending || modelSwitching || pendingSessionSwitchPath) return;
     if (audioRecordingState !== 'idle' || audioRecorderRef.current) return;
     const AudioContextCtor = window.AudioContext
       || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -922,7 +976,18 @@ function InputAreaInner({ surface }: Required<InputAreaProps>) {
       addToast(message, 'error', 6000);
       console.warn('[input] failed to start audio recording', err);
     }
-  }, [addToast, audioRecordingState, inputLocked, showAudioInput, t]);
+  }, [
+    addToast,
+    audioRecordingState,
+    connected,
+    inputLocked,
+    isStreaming,
+    modelSwitching,
+    pendingSessionSwitchPath,
+    sending,
+    showAudioInput,
+    t,
+  ]);
 
   const handleAudioRecordToggle = useCallback(() => {
     if (audioRecordingState === 'recording') {
@@ -933,6 +998,34 @@ function InputAreaInner({ surface }: Required<InputAreaProps>) {
       void startAudioRecording();
     }
   }, [audioRecordingState, startAudioRecording, stopAudioRecording]);
+
+  const canUseVoiceShortcut = useCallback(() => {
+    if (surface !== 'desktop') return false;
+    if (!showAudioInput) return false;
+    if (inputLocked || modelSwitching) return false;
+    if (typeof document !== 'undefined' && !document.hasFocus()) return false;
+    const state = useStore.getState() as Record<string, any>;
+    if (state.currentTab !== 'chat') return false;
+    if (state.pendingSessionSwitchPath) return false;
+    if (state.settingsModal?.open || state.mediaViewer || state.skillViewerData || state.channelCreateOverlayVisible) {
+      return false;
+    }
+    return true;
+  }, [inputLocked, modelSwitching, showAudioInput, surface]);
+
+  useEffect(() => {
+    if (surface !== 'desktop') return undefined;
+    const handleVoiceShortcut = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const mod = event.metaKey || event.ctrlKey;
+      if (!mod || !event.shiftKey || event.altKey || key !== 'm') return;
+      if (!canUseVoiceShortcut()) return;
+      event.preventDefault();
+      handleAudioRecordToggle();
+    };
+    window.addEventListener('keydown', handleVoiceShortcut);
+    return () => window.removeEventListener('keydown', handleVoiceShortcut);
+  }, [canUseVoiceShortcut, handleAudioRecordToggle, surface]);
 
   useEffect(() => {
     if (audioRecordingState !== 'recording' || !audioRecordingStartedAt) return undefined;

@@ -13,6 +13,26 @@ import { extOfName } from './file-kind';
 /* eslint-disable @typescript-eslint/no-explicit-any -- API 历史消息 JSON 结构动态，难以静态收窄 */
 
 const LEGACY_STEER_PREFIX_RE = /^(?:（插话，无需 MOOD）|\(Interjection, no MOOD needed\))\n?/;
+const MEDIA_ONLY_PLACEHOLDER_TEXT = new Set([
+  '(看图)',
+  '（看图）',
+  '(view image)',
+  '（看圖）',
+  '（画像を見る）',
+  '(이미지 보기)',
+  '(看视频)',
+  '（看视频）',
+  '(view video)',
+  '（看影片）',
+  '（動画を見る）',
+  '(비디오 보기)',
+  '(听音频)',
+  '（听音频）',
+  '(listen to audio)',
+  '（聽音訊）',
+  '（音声を聞く）',
+  '(오디오 듣기)',
+]);
 
 // ── API 响应类型 ──
 
@@ -145,6 +165,13 @@ function basenamePortable(value: string): string {
   return slash >= 0 ? normalized.slice(slash + 1) : normalized;
 }
 
+function normalizeUserVisibleText(text: string, hasMediaAttachment: boolean): string {
+  if (!hasMediaAttachment) return text;
+  const trimmed = text.trim();
+  if (!trimmed) return '';
+  return MEDIA_ONLY_PLACEHOLDER_TEXT.has(trimmed) ? '' : text;
+}
+
 function normalizeHistoryBlock(raw: unknown): Record<string, any> | null {
   if (!isRecord(raw)) return null;
   const type = nonEmptyString(raw.type);
@@ -229,6 +256,8 @@ export function buildItemsFromHistory(data: HistoryApiResponse): ChatListItem[] 
       }
 
       const { text, files, attachedImages, attachedVideos, attachedAudios, deskContext, quotedText } = parseUserAttachments(rawContent);
+      const hasMarkerMedia = attachedImages.length > 0 || attachedVideos.length > 0 || attachedAudios.length > 0;
+      const visibleText = normalizeUserVisibleText(text, hasMarkerMedia);
       const fileAtts = files.map(f => ({
         path: f.path,
         name: f.name,
@@ -266,8 +295,8 @@ export function buildItemsFromHistory(data: HistoryApiResponse): ChatListItem[] 
         id,
         sourceEntryId: m.entryId,
         role: 'user',
-        text,
-        textHtml: text ? renderMarkdown(text) : undefined,
+        text: visibleText,
+        textHtml: visibleText ? renderMarkdown(visibleText) : undefined,
         attachments: allAtts.length ? allAtts : undefined,
         deskContext: deskContext || undefined,
         quotedText: quotedText || undefined,
