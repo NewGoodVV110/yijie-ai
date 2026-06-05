@@ -379,4 +379,60 @@ describe('streamBufferManager.ensureMessage 自愈', () => {
     if (workflowMessage?.type !== 'message') throw new Error('expected assistant message');
     expect(workflowMessage.data.blocks?.map((block) => block.type)).toEqual(['workflow']);
   });
+
+  it('workflow 幕间回复不会夹在同一轮后续正文前面', () => {
+    streamBufferManager.handle({
+      type: 'content_block',
+      sessionPath: PATH,
+      block: {
+        type: 'workflow',
+        taskId: 'workflow-late-text',
+        taskTitle: '冒烟测试',
+        streamStatus: 'running',
+        startedAt: 1000,
+      },
+    });
+    streamBufferManager.handle({ type: 'turn_end', sessionPath: PATH });
+
+    streamBufferManager.handle({
+      type: 'content_block',
+      sessionPath: PATH,
+      block: {
+        type: 'interlude',
+        id: 'deferred:workflow-late-text:success',
+        variant: 'deferred_result',
+        taskId: 'workflow-late-text',
+        status: 'success',
+        sourceKind: 'workflow',
+        sourceLabel: '冒烟测试',
+        text: 'Hanako收到了来自 冒烟测试 workflow 的回复',
+      },
+    });
+
+    streamBufferManager.handle({
+      type: 'text_delta',
+      sessionPath: PATH,
+      delta: 'Workflow 已经提交后台运行了。',
+    });
+    streamBufferManager.finishTurn(PATH);
+
+    const items = getItems();
+    expect(items.map((item) => (item.type === 'message' ? item.data.id : item.id))).toEqual([
+      'u1',
+      expect.stringMatching(/^stream-/),
+      'deferred:workflow-late-text:success',
+    ]);
+
+    const assistantItems = items.filter((item) => item.type === 'message' && item.data.role === 'assistant');
+    expect(assistantItems).toHaveLength(1);
+    const workflowMessage = assistantItems[0];
+    expect(workflowMessage?.type).toBe('message');
+    if (workflowMessage?.type !== 'message') throw new Error('expected assistant message');
+    expect(workflowMessage.data.blocks?.map((block) => block.type)).toEqual(['workflow', 'text']);
+    const textBlock = workflowMessage.data.blocks?.find((block) => block.type === 'text');
+    expect(textBlock).toMatchObject({
+      type: 'text',
+      source: 'Workflow 已经提交后台运行了。',
+    });
+  });
 });

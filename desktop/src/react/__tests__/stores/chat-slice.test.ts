@@ -177,6 +177,85 @@ describe('chat-slice', () => {
     });
   });
 
+  describe('insertInterludeItemNearTaskResult', () => {
+    it('workflow 幕间插到同一轮连续 assistant 片段之后', () => {
+      slice.initSession('/a', [
+        { type: 'message', data: { id: 'u1', role: 'user', text: 'run workflow' } },
+        {
+          type: 'message',
+          data: {
+            id: 'a-card',
+            role: 'assistant',
+            blocks: [{
+              type: 'workflow',
+              taskId: 'workflow-1',
+              taskTitle: '冒烟测试',
+              streamStatus: 'running',
+            }],
+          },
+        },
+        {
+          type: 'message',
+          data: {
+            id: 'a-text',
+            role: 'assistant',
+            blocks: [{ type: 'text', html: '<p>Workflow 已经提交后台运行了。</p>' }],
+          },
+        },
+      ], false);
+
+      const inserted = slice.insertInterludeItemNearTaskResult('/a', 'workflow-1', {
+        type: 'interlude',
+        id: 'deferred:workflow-1:success',
+        variant: 'deferred_result',
+        taskId: 'workflow-1',
+        status: 'success',
+        sourceKind: 'workflow',
+        text: 'Hanako收到了来自 冒烟测试 workflow 的回复',
+      });
+
+      expect(inserted).toBe(true);
+      expect(slice.chatSessions['/a']?.items.map((item) => (
+        item.type === 'message' ? item.data.id : item.id
+      ))).toEqual(['u1', 'a-card', 'a-text', 'deferred:workflow-1:success']);
+    });
+
+    it('媒体结果幕间仍然插到结果文件前', () => {
+      slice.initSession('/a', [
+        { type: 'message', data: { id: 'u1', role: 'user', text: 'draw' } },
+        {
+          type: 'message',
+          data: {
+            id: 'a-media',
+            role: 'assistant',
+            blocks: [{
+              type: 'file',
+              replacesTaskId: 'task-img',
+              filePath: '/tmp/image.png',
+              label: 'image.png',
+              ext: 'png',
+            }],
+          },
+        },
+      ], false);
+
+      const inserted = slice.insertInterludeItemNearTaskResult('/a', 'task-img', {
+        type: 'interlude',
+        id: 'deferred:task-img:success',
+        variant: 'deferred_result',
+        taskId: 'task-img',
+        status: 'success',
+        sourceKind: 'tool',
+        text: '图片结果已抵达',
+      });
+
+      expect(inserted).toBe(true);
+      expect(slice.chatSessions['/a']?.items.map((item) => (
+        item.type === 'message' ? item.data.id : item.id
+      ))).toEqual(['u1', 'deferred:task-img:success', 'a-media']);
+    });
+  });
+
   describe('truncateSessionFromMessage', () => {
     it('只截断目标 session 从指定消息开始的尾部，其它 session 不动', () => {
       slice.initSession('/a', [

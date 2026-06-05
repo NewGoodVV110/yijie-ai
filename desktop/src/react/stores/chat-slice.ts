@@ -222,7 +222,9 @@ export const createChatSlice = (
         const blockIdx = blocks.findIndex((existing) => isInterludeResultAnchorBlock(existing, taskId));
         if (blockIdx < 0) continue;
 
-        insertAt = shouldPlaceInterludeBeforeAnchor(blocks[blockIdx]) ? i : i + 1;
+        insertAt = shouldPlaceInterludeBeforeAnchor(blocks[blockIdx])
+          ? i
+          : insertAfterAssistantRun(items, i);
         break;
       }
 
@@ -486,4 +488,14 @@ function isInterludeResultAnchorBlock(block: ContentBlock, taskId: string): bool
 
 function shouldPlaceInterludeBeforeAnchor(block: ContentBlock): boolean {
   return block.type === 'media_generation' || block.type === 'file';
+}
+
+function insertAfterAssistantRun(items: ChatListItem[], anchorIndex: number): number {
+  let insertAt = anchorIndex + 1;
+  while (insertAt < items.length) {
+    const item = items[insertAt];
+    if (item.type !== 'message' || item.data.role !== 'assistant') break;
+    insertAt += 1;
+  }
+  return insertAt;
 }
