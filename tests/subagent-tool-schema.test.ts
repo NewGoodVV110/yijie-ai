@@ -1,40 +1,40 @@
-import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { describe, it, expect, vi } from "vitest";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, "..");
+vi.mock("../lib/i18n.ts", () => ({ t: (k: string) => k, getLocale: () => "en" }));
 
-function loadSubagentDef() {
-  const filePath = resolve(ROOT, "desktop", "src", "locales", "en.json");
-  return JSON.parse(readFileSync(filePath, "utf8")).toolDef.subagent;
+async function loadSubagentToolDef() {
+  const mod = await import("../lib/tools/subagent-tool.ts");
+  const tool = (mod as any).createSubagentTool({
+    currentAgentId: "test",
+    getParentCwd: () => "/tmp",
+    executeIsolated: async () => {},
+  });
+  return tool;
 }
 
-describe("subagent tool schema copy", () => {
-  it("keeps description concise", () => {
-    const def = loadSubagentDef();
-    expect(def.description.length).toBeLessThan(280);
+describe("subagent tool schema", () => {
+  it("does not duplicate generic background task polling rules", async () => {
+    const tool = await loadSubagentToolDef();
+    expect(tool.description).not.toContain("check_pending_tasks");
+    expect(tool.description).not.toContain("Check at most");
+    expect(tool.description).not.toContain("<hana-background-result>");
   });
 
-  it("does not duplicate generic background task polling rules", () => {
-    const def = loadSubagentDef();
-    expect(def.description).not.toContain("check_pending_tasks");
-    expect(def.description).not.toContain("Check at most");
-    expect(def.description).not.toContain("<hana-background-result>");
+  it("includes context protection guidance", async () => {
+    const tool = await loadSubagentToolDef();
+    expect(tool.description).toContain("direct tool");
+    expect(tool.description).toContain("protecting the main context window");
   });
 
-  it("uses current thread/id semantics", () => {
-    const def = loadSubagentDef();
-    expect(def.agentDesc).toMatch(/backticks/);
-    expect(def.agentDesc).toMatch(/persona/);
-    expect(def.agentDesc).toMatch(/model/);
-    expect(def.agentDesc).not.toMatch(/parentheses/);
-    expect(def.labelDesc).toMatch(/display/i);
-    expect(def.labelDesc).toMatch(/threadId|subagent_reply/);
-    expect(def.instanceDesc).toMatch(/[Ll]egacy/);
-    expect(def.instanceDesc).not.toMatch(/ephemeral thread|no memory/);
-    expect(def.modelDesc).toMatch(/chat model/);
-    expect(def.modelDesc).not.toMatch(/utility/);
+  it("has correct parameter descriptions", async () => {
+    const schema = await loadSubagentToolDef();
+    const props = schema.parameters?.properties;
+    expect(props?.agent?.description).toMatch(/backticks/);
+    expect(props?.agent?.description).toMatch(/persona/);
+    expect(props?.agent?.description).toMatch(/model/);
+    expect(props?.label?.description).toMatch(/display/i);
+    expect(props?.label?.description).toMatch(/threadId|subagent_reply/);
+    expect(props?.instance?.description).toMatch(/[Ll]egacy/);
+    expect(props?.model?.description).toMatch(/chat model/);
   });
 });

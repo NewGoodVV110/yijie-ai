@@ -27,16 +27,16 @@ function sanitizePath(p) {
 export function createStageFilesTool({ registerSessionFile, getSessionPath } = {}) {
   return {
     name: "stage_files",
-    label: t("toolDef.outputFile.label"),
-    description: t("toolDef.outputFile.description"),
+    label: "Stage Files",
+    description: "Call this tool when you need to hand one or more local files to the user, present them on desktop, or send them through Bridge/remote platforms. Use it after creating a file, finding a requested local file, receiving a browser screenshot, installer/package source, or file contribution from a plugin or sub-agent. Only call it when the file really exists and the path is a local absolute path. Do not merely mention file paths in text, and do not decide how the target platform should render or send the file; consumers choose the platform-specific delivery.",
     parameters: Type.Object({
       filepaths: Type.Optional(Type.Array(Type.String(), {
         minItems: 1,
-        description: t("toolDef.outputFile.filepathsDesc"),
+        description: "Local absolute file paths to deliver. After locating files, pass them here so StageFile can register them for desktop, Bridge, or future mobile consumers.",
       })),
       // 向下兼容旧接口
-      filePath: Type.Optional(Type.String({ description: t("toolDef.outputFile.filePathDesc") })),
-      label: Type.Optional(Type.String({ description: t("toolDef.outputFile.labelDesc") })),
+      filePath: Type.Optional(Type.String({ description: "(Compat) Single local absolute file path. Prefer filepaths for new calls." })),
+      label: Type.Optional(Type.String({ description: "(Compat) File name shown to the user. Usually omit this; the filename is used by default." })),
     }),
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
       // 统一为路径数组：优先使用 filepaths，兼容 filePath

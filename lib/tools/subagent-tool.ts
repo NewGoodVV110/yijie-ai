@@ -193,18 +193,21 @@ export function createSubagentTool(deps) {
 
   return {
     name: "subagent",
-    label: t("toolDef.subagent.label"),
-    description: t("toolDef.subagent.description"),
+    label: "Launch Subagent",
+    description:
+      "Create a continuable subagent instance for a delegated task. Returns immediately with taskId and threadId; results are delivered back in the background. Use agent to target an agent, or agent=\"?\" to list agents.\n\n" +
+      "If the target is already known, use the direct tool: read for a known path, grep or find for a specific symbol or file. For broad exploration or research that would take more than 3 queries, delegate to a subagent with access=\"read\". Otherwise use read/grep/find directly.\n\n" +
+      "Subagents are valuable for parallelizing independent queries or for protecting the main context window from excessive results, but should not be used excessively when simpler tools suffice.",
     parameters: Type.Object({
-      task: Type.String({ description: t("toolDef.subagent.taskDesc") }),
-      model: Type.Optional(Type.String({ description: t("toolDef.subagent.modelDesc") })),
-      agent: Type.Optional(Type.String({ description: t("toolDef.subagent.agentDesc") })),
-      label: Type.Optional(Type.String({ description: t("toolDef.subagent.labelDesc") })),
+      task: Type.String({ description: "Complete instructions and required context for the subagent. The subagent cannot see the current conversation history unless you include it here." }),
+      model: Type.Optional(Type.String({ description: "Optional model override as provider/id. Omit to use the target agent's configured chat model." })),
+      agent: Type.Optional(Type.String({ description: "Target agent id from the team roster, using the value shown in backticks. Choose the agent whose persona, strengths, and model best fit the task; the roster shows each model and summary. Omit for the current agent; pass \"?\" to list agents." })),
+      label: Type.Optional(Type.String({ description: "Optional display label, such as \"research 1\" or \"draft 2\". Display-only; resume by passing the returned threadId to subagent_reply." })),
       // Legacy compatibility only. New callers should use label; thread identity is the returned threadId.
-      instance: Type.Optional(Type.String({ description: t("toolDef.subagent.instanceDesc") })),
+      instance: Type.Optional(Type.String({ description: "Legacy field, accepted only as label compatibility. New calls should use label; resume with threadId." })),
       access: Type.Optional(Type.Union(
         [Type.Literal("read"), Type.Literal("write")],
-        { description: t("toolDef.subagent.accessDesc") },
+        { description: "Optional permission tier: \"read\" for read-only research, exploration, or review; \"write\" for execution, edits, or commands. Omit to inherit the current session permission." },
       )),
     }),
 
@@ -559,14 +562,14 @@ export function createSubagentTool(deps) {
 export function createSubagentReplyTool(deps) {
   return {
     name: "subagent_reply",
-    label: t("toolDef.subagentReply.label"),
-    description: t("toolDef.subagentReply.description"),
+    label: "Continue Subagent",
+    description: "Append a task to an open subagent instance in the current session. Use current_status with subagents first to see available threadIds.",
     parameters: Type.Object({
-      threadId: Type.String({ description: t("toolDef.subagentReply.threadIdDesc") }),
-      task: Type.String({ description: t("toolDef.subagentReply.taskDesc") }),
+      threadId: Type.String({ description: "The threadId of the subagent instance to continue. It must be an open subagent instance in the current session." }),
+      task: Type.String({ description: "Complete instructions and required context to append to that subagent." }),
       access: Type.Optional(Type.Union(
         [Type.Literal("read"), Type.Literal("write")],
-        { description: t("toolDef.subagentReply.accessDesc") },
+        { description: "Optional permission tier: \"read\" or \"write\". Omit to reuse the instance access, still bounded by the current session permission." },
       )),
     }),
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
@@ -791,11 +794,11 @@ export function createSubagentReplyTool(deps) {
 export function createSubagentCloseTool(deps) {
   return {
     name: "subagent_close",
-    label: t("toolDef.subagentClose.label"),
-    description: t("toolDef.subagentClose.description"),
+    label: "Close Subagent",
+    description: "Close a no-longer-needed subagent instance in the current session and free a continuable instance slot.",
     parameters: Type.Object({
-      threadId: Type.String({ description: t("toolDef.subagentClose.threadIdDesc") }),
-      reason: Type.Optional(Type.String({ description: t("toolDef.subagentClose.reasonDesc") })),
+      threadId: Type.String({ description: "The threadId of the open subagent instance to close." }),
+      reason: Type.Optional(Type.String({ description: "Optional closing reason, saved as the instance's final summary." })),
     }),
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
       const parentSessionPath = getToolSessionPath(ctx);

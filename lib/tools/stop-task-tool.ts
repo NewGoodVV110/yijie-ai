@@ -11,10 +11,10 @@ import { t } from "../i18n.ts";
 export function createStopTaskTool(deps) {
   return {
     name: "stop_task",
-    label: t("toolDef.stopTask.label"),
-    description: t("toolDef.stopTask.description"),
+    label: "Stop background task",
+    description: "Stop a running background task. Pass the task_id to terminate it. Supported task types include sub-agent tasks, image/video generation tasks, etc.",
     parameters: Type.Object({
-      task_id: Type.String({ description: t("toolDef.stopTask.taskIdDesc") }),
+      task_id: Type.String({ description: "The task ID to stop" }),
     }),
     execute: async (_toolCallId, params) => {
       const taskId = params.task_id?.trim();

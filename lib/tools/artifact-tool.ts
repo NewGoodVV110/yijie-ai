@@ -19,18 +19,18 @@ let _counter = 0;
 export function createArtifactTool({ getHanakoHome, registerSessionFile, getSessionPath } = {}) {
   return {
     name: "create_artifact",
-    label: t("toolDef.artifact.label"),
-    description: t("toolDef.artifact.description"),
+    label: "Create Preview",
+    description: "Call this tool when you need to show the user an HTML page, code snippet, or long-form Markdown content.\nContent is rendered in a standalone preview panel where the user can view results in real time.\nGood for: runnable HTML/CSS/JS pages, interactive visualizations, SVG charts, complete code files, long formatted documents.\nNot for: short text replies, conversational answers, one-line code snippets (just show those inline).",
     parameters: Type.Object({
       type: StringEnum(
         ["html", "code", "markdown"],
-        { description: t("toolDef.artifact.typeDesc") },
+        { description: "Content type: html (rendered page), code (syntax highlighted), markdown (document)" },
       ),
-      title: Type.String({ description: t("toolDef.artifact.titleDesc") }),
-      content: Type.String({ description: t("toolDef.artifact.contentDesc") }),
+      title: Type.String({ description: "Display title, a short description of the content" }),
+      content: Type.String({ description: "Full content (HTML source / code / Markdown text)" }),
       language: Type.Optional(
         Type.String({
-          description: t("toolDef.artifact.languageDesc"),
+          description: "Programming language (only for type=code), e.g. javascript, python, css",
         }),
       ),
     }),

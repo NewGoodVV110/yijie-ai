@@ -157,11 +157,11 @@ export function createExperienceTools(agentDir, opts = {}) {
 
   const recallTool = {
     name: "recall_experience",
-    label: t("toolDef.experience.recallLabel"),
-    description: t("toolDef.experience.recallDescription"),
+    label: "Recall Experience",
+    description: "Browse the experience library. Without parameters, returns an overview of all categories. With a category name, returns specific experiences in that category. When the user asks you to do a concrete task (write code, research, create documents, analyze problems, etc.), check this tool first for relevant experience before starting. Not needed for casual chat, Q&A, or everyday conversation.",
     parameters: Type.Object({
       category: Type.Optional(
-        Type.String({ description: t("toolDef.experience.recallCategoryDesc") }),
+        Type.String({ description: "Category name. Omit to get an overview of all categories" }),
       ),
     }),
     execute: async (_toolCallId, params) => {
@@ -206,14 +206,14 @@ export function createExperienceTools(agentDir, opts = {}) {
 
   const recordTool = {
     name: "record_experience",
-    label: t("toolDef.experience.recordLabel"),
-    description: t("toolDef.experience.recordDescription"),
+    label: "Record Experience",
+    description: "Record a lesson learned to the experience library. Use when: the user points out a mistake and explains the correct approach, the user shows frustration or repeatedly emphasizes something, you discover an effective method after trying multiple approaches, the user explicitly says 'from now on do/don't do this', or you hit a pitfall during patrol or autonomous work. Each entry should be concise and direct, one sentence.",
     parameters: Type.Object({
       category: Type.String({
-        description: t("toolDef.experience.recordCategoryDesc"),
+        description: "Category for the experience, a 2-4 word phrase, e.g. 'tool usage', 'search tips', 'response style'",
       }),
       content: Type.String({
-        description: t("toolDef.experience.recordContentDesc"),
+        description: "The specific experience content, concise and direct, one sentence",
       }),
     }),
     execute: async (_toolCallId, params) => {

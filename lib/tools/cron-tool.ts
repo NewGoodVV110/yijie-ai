@@ -34,31 +34,31 @@ export function createCronTool(cronStore, {
 } = {}) {
   return {
     name: "cron",
-    label: t("toolDef.cron.label"),
-    description: t("toolDef.cron.description"),
+    label: "Scheduled Tasks",
+    description: "Create and manage scheduled tasks. Scheduled tasks run automatically in the background, spawning an independent session to execute the specified prompt when triggered.\nActions:\n- list: View all tasks\n- add(scheduleType, schedule, prompt, label?, model?): Create a task\n  - scheduleType \"at\": One-time, schedule is an ISO time string\n  - scheduleType \"every\": Interval, schedule is minutes (e.g. 60 = hourly)\n  - scheduleType \"cron\": Cron expression (e.g. \"0 7 * * *\" = every day at 7 AM)\n  - model: Optional, specify the model for task execution (defaults to the chat model)\n- remove(id): Delete a task\n- toggle(id): Enable/disable a task",
     parameters: Type.Object({
       action: StringEnum(
         ["list", "add", "remove", "toggle"],
-        { description: t("toolDef.cron.actionDesc") },
+        { description: "Action type" },
       ),
       scheduleType: Type.Optional(StringEnum(
         ["at", "every", "cron"],
-        { description: t("toolDef.cron.scheduleTypeDesc") },
+        { description: "Schedule type (required for add)" },
       )),
       schedule: Type.Optional(Type.String({
-        description: t("toolDef.cron.scheduleDesc")
+        description: "Schedule: ISO time (at), minutes (every, e.g. 60=hourly), cron expression (cron)"
       })),
       prompt: Type.Optional(Type.String({
-        description: t("toolDef.cron.promptDesc")
+        description: "Prompt to execute when triggered (required for add)"
       })),
       label: Type.Optional(Type.String({
-        description: t("toolDef.cron.labelDesc")
+        description: "Task display label (optional)"
       })),
       model: Type.Optional(Type.String({
-        description: t("toolDef.cron.modelDesc")
+        description: "Specify execution model as provider/id (optional, defaults to the chat model)"
       })),
       id: Type.Optional(Type.String({
-        description: t("toolDef.cron.idDesc")
+        description: "Task ID (required for remove/toggle)"
       })),
     }),
 

@@ -170,19 +170,19 @@ ${skillContent}`;
 export function createInstallSkillTool({ getUserSkillsDir, getConfig, resolveUtilityConfig, onInstalled, registerSessionFile }) {
   return {
     name: "install_skill",
-    label: t("toolDef.installSkill.label"),
-    description: t("toolDef.installSkill.description"),
+    label: "Install Skill",
+    description: "Install a new skill into the shared skill pool, enabled only for the current Agent by default. Mode A: Provide a GitHub repo URL (containing SKILL.md) to auto-fetch and install. Mode B: Directly provide skill_content + skill_name, for self-authored skills.",
     parameters: Type.Object({
       github_url: Type.Optional(
-        Type.String({ description: t("toolDef.installSkill.githubUrlDesc") })
+        Type.String({ description: "GitHub repo URL (Mode A)" })
       ),
       skill_content: Type.Optional(
-        Type.String({ description: t("toolDef.installSkill.skillContentDesc") })
+        Type.String({ description: "Full content of SKILL.md (Mode B)" })
       ),
       skill_name: Type.Optional(
-        Type.String({ description: t("toolDef.installSkill.skillNameDesc") })
+        Type.String({ description: "Skill name (required for Mode B)" })
       ),
-      reason: Type.String({ description: t("toolDef.installSkill.reasonDesc") }),
+      reason: Type.String({ description: "Explain why this skill is needed (for audit, required)" }),
     }),
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
       const cfg = getConfig();

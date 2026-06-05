@@ -19,10 +19,10 @@ const AGENT_TOTAL_BACKSTOP = 1000;
 
 function buildParameters() {
   return Type.Object({
-    script: Type.String({ description: t("toolDef.workflow.scriptDesc") }),
-    args: Type.Optional(Type.Any({ description: t("toolDef.workflow.argsDesc") })),
+    script: Type.String({ description: "Orchestration script, must start with export const meta = {...}" }),
+    args: Type.Optional(Type.Any({ description: "Arguments passed to the script's args global. Pass { budgetTokens: N } to set a token budget ceiling." })),
     resumeFromRunId: Type.Optional(Type.String({
-      description: t("tool.workflow.resumeFromRunIdDesc"),
+      description: "Previous workflow runId (taskId) to resume from — cached agent nodes with unchanged prompt+opts return instantly, first change onward re-executes.",
     })),
   });
 }
@@ -92,8 +92,8 @@ function makeBudget(ledger, taskId, budgetTotal) {
 export function createWorkflowTool(deps) {
   return {
     name: "workflow",
-    label: t("toolDef.workflow.label"),
-    description: t("toolDef.workflow.description"),
+    label: "Workflow",
+    description: "Orchestrate multiple sub-agents with a deterministic JS script (agent/parallel/pipeline/workflow).\nUse for: controlled fan-out, ensuring thoroughness, synthesizing results from multiple sub-agents.\nScript must start with `export const meta = { name, description }` (pure literal).\nAvailable globals: agent(prompt, {model?, schema?, agentType?}) returns result synchronously (with schema returns validated object); parallel(thunks) runs concurrently and awaits all (throwing thunks resolve to null); pipeline(items, ...stages) runs each item through stages independently; workflow(script, args?) runs another workflow inline (shares limiter/signal/budget, one level only); log/phase/budget/args.\nbudget: { total: number|null, spent(): number, remaining(): number }. total comes from args.budgetTokens; spent() queries UsageLedger in real-time; remaining() = total - spent() or Infinity if no total. Use for dynamic loops: `while (budget.remaining() > 50000) { ... }`.\nScript body (two equivalent forms): 1. use globals at top level, top-level return for result; 2. `export default async function({ agent, parallel, pipeline, workflow, log, phase, budget, args }) { ... }` destructure params, return inside function.\nScript cannot access require/process/fs/net; Math.random/Date.now are disabled.\nTool returns task id (= runId) immediately and runs in the background (non-blocking), script return value becomes the background task's final result, automatically returns to conversation when done.\nResume: pass resumeFromRunId with a previous runId to resume from checkpoint — completed agent() calls with unchanged (prompt, opts) return cached results instantly; first changed call and everything after re-executes.\nWorkflow agent nodes are controlled one-shot threads, allowing high concurrency fan-out (up to 256 concurrent, 1000 total dispatched).",
     parameters: buildParameters(),
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
       const parentSessionPath = getToolSessionPath(ctx) || deps.getSessionPath?.() || null;

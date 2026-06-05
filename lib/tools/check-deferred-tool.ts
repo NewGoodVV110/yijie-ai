@@ -20,11 +20,11 @@ import { t } from "../i18n.ts";
 export function createCheckDeferredTool({ getDeferredStore, getSessionPath }) {
   return {
     name: "check_pending_tasks",
-    label: t("toolDef.checkPendingTasks.label"),
-    description: t("toolDef.checkPendingTasks.description"),
+    label: "Check Pending Tasks",
+    description: "Check the status of all background async tasks in the current conversation (image/video generation, subagent, etc.). Only returns tasks from the current conversation.",
     parameters: Type.Object({
       status: Type.Optional(
-        Type.String({ description: t("toolDef.checkPendingTasks.statusDesc") }),
+        Type.String({ description: "Filter by status: pending / resolved / failed. Omit to return all." }),
       ),
     }),
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {

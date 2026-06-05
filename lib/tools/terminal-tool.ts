@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { Type } from "../pi-sdk/index.ts";
 import { getToolSessionPath } from "./tool-session.ts";
-import { t } from "../i18n.ts";
 
 const READ_ACTIONS = new Set(["read", "list"]);
 
@@ -37,18 +36,18 @@ export function createTerminalTool({
 } = {}) {
   return {
     name: "terminal",
-    label: t("toolDef.terminal.label"),
-    description: t("toolDef.terminal.description"),
+    label: "Terminal",
+    description: "Manage per-session persistent terminal sessions. Use the existing bash tool for short one-shot commands. Use terminal only for long-running or interactive processes that need continued stdin/stdout, such as dev servers, REPLs, ssh, or shells. Actions: start, write, read, close, list.",
     parameters: Type.Object({
-      action: Type.String({ description: t("toolDef.terminal.actionDesc") }),
-      terminal_id: Type.Optional(Type.String({ description: t("toolDef.terminal.terminalIdDesc") })),
-      command: Type.Optional(Type.String({ description: t("toolDef.terminal.commandDesc") })),
-      chars: Type.Optional(Type.String({ description: t("toolDef.terminal.charsDesc") })),
-      cwd: Type.Optional(Type.String({ description: t("toolDef.terminal.cwdDesc") })),
-      label: Type.Optional(Type.String({ description: t("toolDef.terminal.labelDesc") })),
-      since_seq: Type.Optional(Type.Number({ description: t("toolDef.terminal.sinceSeqDesc") })),
-      cols: Type.Optional(Type.Number({ description: t("toolDef.terminal.colsDesc") })),
-      rows: Type.Optional(Type.Number({ description: t("toolDef.terminal.rowsDesc") })),
+      action: Type.String({ description: "One of: start, write, read, close, list." }),
+      terminal_id: Type.Optional(Type.String({ description: "Terminal id returned by action=start or action=list." })),
+      command: Type.Optional(Type.String({ description: "Command to start in a PTY. Omit to start an interactive shell." })),
+      chars: Type.Optional(Type.String({ description: "Input to write to the terminal for action=write." })),
+      cwd: Type.Optional(Type.String({ description: "Working directory for action=start. Defaults to the current session cwd." })),
+      label: Type.Optional(Type.String({ description: "Short human label for action=start." })),
+      since_seq: Type.Optional(Type.Number({ description: "Only return transcript chunks after this sequence number for action=read." })),
+      cols: Type.Optional(Type.Number({ description: "PTY columns for action=start." })),
+      rows: Type.Optional(Type.Number({ description: "PTY rows for action=start." })),
     }),
     execute: async (_toolCallId, params = {}, _signal, _onUpdate, ctx) => {
       const action = normalizeAction(params.action);

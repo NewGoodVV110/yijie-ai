@@ -75,12 +75,12 @@ function htmlToText(html) {
 export function createWebFetchTool() {
   return {
     name: "web_fetch",
-    label: t("toolDef.webFetch.label"),
-    description: t("toolDef.webFetch.description"),
+    label: "Fetch Web Page",
+    description: "Fetch the content of a given URL and extract text. Useful for reading articles, docs, API responses, etc. Pair with web_search: first search to find a URL, then use web_fetch to read the full content.",
     parameters: Type.Object({
-      url: Type.String({ description: t("toolDef.webFetch.urlDesc") }),
+      url: Type.String({ description: "Full URL to fetch (including https://)" }),
       maxLength: Type.Optional(
-        Type.Number({ description: t("toolDef.webFetch.maxLenDesc", { max: MAX_CONTENT_LENGTH }), default: MAX_CONTENT_LENGTH })
+        Type.Number({ description: `Maximum characters to return, default ${MAX_CONTENT_LENGTH}`, default: MAX_CONTENT_LENGTH })
       ),
     }),
     execute: async (_toolCallId, params) => {

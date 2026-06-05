@@ -40,11 +40,11 @@ function ensureDmFile(dmDir, peerId) {
 export function createDmTool({ agentId, agentsDir, listAgents, onDmSent, isEnabled }) {
   return {
     name: "dm",
-    label: t("toolDef.dm.label"),
-    description: t("toolDef.dm.description"),
+    label: "Direct Message",
+    description: "Send a single direct message to another agent to inform them of something.\nDo not use this tool to assign tasks or get results; that is subagent's job.",
     parameters: Type.Object({
-      to: Type.String({ description: t("toolDef.dm.toDesc") }),
-      message: Type.String({ description: t("toolDef.dm.messageDesc") }),
+      to: Type.String({ description: "Target agent's id field value (the one in parentheses in the team roster, not the bold display name)" }),
+      message: Type.String({ description: "Message content" }),
     }),
 
     execute: async (_toolCallId, params) => {

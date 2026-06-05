@@ -179,30 +179,30 @@ export function createChannelTool({
 }) {
   return {
     name: "channel",
-    label: t("toolDef.channel.label"),
-    description: t("toolDef.channel.description"),
+    label: "Channel",
+    description: "Manage channel messages (for broadcasts and group discussions).\nActions:\n- read(channel, count?): View recent messages in a channel\n- post(channel, content): Send a message to a channel\n- create(name, members, intro?): Create a new channel\n- list: View channels you have joined\nNote: For one-on-one messaging with an agent, use the dm tool instead of simulating a private chat via channels.",
     parameters: Type.Object({
       action: StringEnum(
         ["read", "post", "create", "list"],
-        { description: t("toolDef.channel.actionDesc") },
+        { description: "Action type" },
       ),
       channel: Type.Optional(Type.String({
-        description: t("toolDef.channel.channelDesc")
+        description: "Channel name (required for read/post)"
       })),
       content: Type.Optional(Type.String({
-        description: t("toolDef.channel.contentDesc")
+        description: "Message content (required for post)"
       })),
       name: Type.Optional(Type.String({
-        description: t("toolDef.channel.nameDesc")
+        description: "New channel name (required for create)"
       })),
       members: Type.Optional(Type.Array(Type.String(), {
-        description: t("toolDef.channel.membersDesc")
+        description: "Member list (required for create), e.g. [\"hana\", \"butter\"]"
       })),
       intro: Type.Optional(Type.String({
-        description: t("toolDef.channel.introDesc")
+        description: "Channel description (optional for create)"
       })),
       count: Type.Optional(Type.Number({
-        description: t("toolDef.channel.countDesc")
+        description: "Number of messages to read (optional for read, default 20)"
       })),
     }),
 

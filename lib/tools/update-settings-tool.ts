@@ -441,16 +441,16 @@ export function createUpdateSettingsTool(deps = {}) {
 
   return {
     name: "update_settings",
-    userFacingName: t("toolDef.updateSettings.label"),
-    description: t("toolDef.updateSettings.description"),
+    userFacingName: "Settings",
+    description: "Modify HanaAgent's settings. When the user mentions changing settings without naming a specific app, assume this application. For preferences like appearance/theme, language/region, model selection, security/permissions, memory, personal info, working directory, or MCP connectors, use this tool, and do not search the web or edit config files directly. Two actions available:\n- search + query: Search settings by keyword, see current values and options\n- apply + key + value: Change a setting (requires user confirmation)\n\nIf you already know the exact key, you can apply directly. When intent is clear, apply directly and report the result in one sentence; when unsure, search first.",
     parameters: Type.Object({
       action: StringEnum(
         ["search", "apply"],
-        { description: t("toolDef.updateSettings.actionDesc") },
+        { description: "Action: search to find settings / apply to change a setting" },
       ),
-      query: Type.Optional(Type.String({ description: t("toolDef.updateSettings.queryDesc") })),
-      key: Type.Optional(Type.String({ description: t("toolDef.updateSettings.keyDesc") })),
-      value: Type.Optional(Type.String({ description: t("toolDef.updateSettings.valueDesc") })),
+      query: Type.Optional(Type.String({ description: "Search keyword (required for search)" })),
+      key: Type.Optional(Type.String({ description: "Setting key (found via search)" })),
+      value: Type.Optional(Type.String({ description: "Proposed new value" })),
     }),
     isUserFacing: true,
     execute: async (_toolCallId, params, _signal, _onUpdate, _ctx) => {

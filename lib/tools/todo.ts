@@ -51,24 +51,24 @@ function detectMultiInProgress(todos) {
 export function createTodoTool() {
   return {
     name: TODO_WRITE_TOOL_NAME,
-    label: t("toolDef.todoWrite.label"),
-    description: t("toolDef.todoWrite.description"),
+    label: "Todo",
+    description: "Manage the todo list for the current session. Use it to break down and track multi-step work: when you receive a complex or multi-step task, decompose it into sub-tasks before executing step by step. Simple single-step tasks (answering questions, single lookups, simple edits) do not need it. Pass the complete todos array each call to replace the current state (replacement style).\nEach todo needs:\n- content: static description (e.g. 'Read spec')\n- activeForm: in-progress description (e.g. 'Reading spec')\n- status: pending | in_progress | completed\nConvention: at most one in_progress at a time. Mark a todo in_progress when starting it, immediately change it to completed when done and set the next one to in_progress; do not batch up completions.",
     parameters: Type.Object({
       todos: Type.Array(
         Type.Object({
           content: Type.String({
             minLength: 1,
-            description: t("toolDef.todoWrite.contentDesc"),
+            description: "Static description of the todo",
           }),
           activeForm: Type.String({
             minLength: 1,
-            description: t("toolDef.todoWrite.activeFormDesc"),
+            description: "In-progress form description (shown in UI while in_progress)",
           }),
           status: StringEnum(TODO_STATUS_VALUES, {
-            description: t("toolDef.todoWrite.statusDesc"),
+            description: "One of: pending / in_progress / completed",
           }),
         }),
-        { description: t("toolDef.todoWrite.todosDesc") },
+        { description: "Complete todo list; each call replaces the previous list" },
       ),
     }),
 

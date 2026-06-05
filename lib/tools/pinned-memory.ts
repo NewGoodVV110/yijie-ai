@@ -26,10 +26,10 @@ const log = createModuleLogger("pin_memory");
 export function createPinnedMemoryTools(agentDir) {
   const pinTool = {
     name: "pin_memory",
-    label: t("toolDef.pinnedMemory.pinLabel"),
-    description: t("toolDef.pinnedMemory.pinDescription"),
+    label: "Pin Memory",
+    description: "Save an item to pinned memory. Use when the user says 'remember this', 'note this down', 'don't forget this later'. Pinned memories are always kept in context.",
     parameters: Type.Object({
-      content: Type.String({ description: t("toolDef.pinnedMemory.pinContentDesc") }),
+      content: Type.String({ description: "Content to remember" }),
     }),
     execute: async (_toolCallId, params) => {
       const { cleaned, detected } = scrubPII(params.content);
@@ -55,11 +55,11 @@ export function createPinnedMemoryTools(agentDir) {
 
   const unpinTool = {
     name: "unpin_memory",
-    label: t("toolDef.pinnedMemory.unpinLabel"),
-    description: t("toolDef.pinnedMemory.unpinDescription"),
+    label: "Unpin Memory",
+    description: "Remove an item from pinned memory. Use when the user says 'forget xxx' or 'delete this memory'. Supports fuzzy matching: any line containing the keyword you provide will be removed.",
     parameters: Type.Object({
       id: Type.Optional(Type.String({ description: "Pinned memory entity id returned by pin_memory" })),
-      keyword: Type.Optional(Type.String({ description: t("toolDef.pinnedMemory.unpinKeywordDesc") })),
+      keyword: Type.Optional(Type.String({ description: "Keyword of the memory to remove, matched fuzzily" })),
     }),
     execute: async (_toolCallId, params) => {
       const existing = readPinnedMemoryItems(agentDir);

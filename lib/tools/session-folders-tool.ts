@@ -120,14 +120,14 @@ function normalizeFolderParam(folder) {
 export function createSessionFoldersTool(deps = {}) {
   return {
     name: "session_folders",
-    label: t("toolDef.sessionFolders.label"),
-    description: t("toolDef.sessionFolders.description"),
+    label: "Session Folders",
+    description: "List or request changes to the current session's extra authorized sandbox folders. Use action=list to inspect cwd, prompt-visible workspace folders, user-authorized folders, and effective sandbox roots. Use add/remove only after the user wants this session to gain or drop folder access; changes require user confirmation and do not modify CWD or prompt text.",
     parameters: Type.Object({
       action: StringEnum(["list", "add", "remove"], {
-        description: t("toolDef.sessionFolders.actionDesc"),
+        description: "list returns the current folder scope. add/remove asks the user to confirm changing the current session's extra authorized folders.",
       }),
       folder: Type.Optional(Type.String({
-        description: t("toolDef.sessionFolders.folderDesc"),
+        description: "Absolute or resolvable folder path for add/remove.",
       })),
     }),
     execute: async (_toolCallId, params = {}, _signal, _onUpdate, ctx) => {

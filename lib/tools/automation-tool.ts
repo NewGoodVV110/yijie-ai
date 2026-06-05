@@ -8,7 +8,6 @@
 
 import { Type, StringEnum } from "../pi-sdk/index.ts";
 import { getToolSessionCwd, getToolSessionPath } from "./tool-session.ts";
-import { t } from "../i18n.ts";
 
 function normalizeSchedule(params) {
   if (!params.scheduleType || !params.schedule) {
@@ -112,28 +111,28 @@ export function createAutomationTool(cronStore, {
 } = {}) {
   return {
     name: "automation",
-    label: t("toolDef.automation.label"),
-    description: t("toolDef.automation.description"),
+    label: "Automation",
+    description: "Create and manage scheduled deterministic automation jobs such as notifications and plugin actions. Use cron for Agent-session prompt jobs.",
     parameters: Type.Object({
       action: StringEnum(["list", "add_notify", "add_plugin_action", "remove", "toggle"], {
-        description: t("toolDef.automation.actionDesc"),
+        description: "Action to perform.",
       }),
       scheduleType: Type.Optional(StringEnum(["at", "every", "cron"], {
-        description: t("toolDef.automation.scheduleTypeDesc"),
+        description: "Trigger type for add actions.",
       })),
       schedule: Type.Optional(Type.String({
-        description: t("toolDef.automation.scheduleDesc"),
+        description: "Trigger schedule. For every, use minutes. For cron, use a 5-field cron expression.",
       })),
-      label: Type.Optional(Type.String({ description: t("toolDef.automation.labelDesc") })),
-      title: Type.Optional(Type.String({ description: t("toolDef.automation.titleDesc") })),
-      body: Type.Optional(Type.String({ description: t("toolDef.automation.bodyDesc") })),
+      label: Type.Optional(Type.String({ description: "Short display label." })),
+      title: Type.Optional(Type.String({ description: "Notification title." })),
+      body: Type.Optional(Type.String({ description: "Notification body." })),
       channels: Type.Optional(Type.Array(StringEnum(["auto", "desktop", "bridge_owner"]))),
       bridgePlatforms: Type.Optional(Type.Array(StringEnum(["wechat", "feishu", "telegram", "qq"]))),
       contextPolicy: Type.Optional(StringEnum(["none", "record_when_delivered"])),
-      pluginId: Type.Optional(Type.String({ description: t("toolDef.automation.pluginIdDesc") })),
-      actionId: Type.Optional(Type.String({ description: t("toolDef.automation.actionIdDesc") })),
-      params: Type.Optional(Type.Any({ description: t("toolDef.automation.paramsDesc") })),
-      id: Type.Optional(Type.String({ description: t("toolDef.automation.idDesc") })),
+      pluginId: Type.Optional(Type.String({ description: "Plugin id for plugin actions." })),
+      actionId: Type.Optional(Type.String({ description: "Plugin action id. V0 maps this to the plugin tool name." })),
+      params: Type.Optional(Type.Any({ description: "Plugin action parameters." })),
+      id: Type.Optional(Type.String({ description: "Automation job id for remove/toggle." })),
     }),
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {
       try {

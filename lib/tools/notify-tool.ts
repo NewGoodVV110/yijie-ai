@@ -15,11 +15,11 @@ import { t } from "../i18n.ts";
 export function createNotifyTool({ onNotify }) {
   return {
     name: "notify",
-    label: t("toolDef.notify.label"),
-    description: t("toolDef.notify.description"),
+    label: "Notification",
+    description: "Send a notification to the user. Choose desktop popup, Bridge owner chat, or the default channel according to the task; pass bridgePlatforms when delivery must stay on WeChat, Feishu, or another Bridge platform.\nUse cases:\n- The user says 'remind me about xxx', 'notify me when...', 'don't let me forget xxx'\n- A scheduled task prompt explicitly includes notification intent or asks to send it through Bridge/WeChat\n- A monitoring/scheduled task discovers something requiring user attention\nIf everything is normal with no issues, do not call this tool. Successful Bridge notifications can be appended to that conversation context according to contextPolicy.",
     parameters: Type.Object({
-      title: Type.String({ description: t("toolDef.notify.titleDesc") }),
-      body: Type.String({ description: t("toolDef.notify.bodyDesc") }),
+      title: Type.String({ description: "Notification title (brief)" }),
+      body: Type.String({ description: "Notification content" }),
       audience: Type.Optional(StringEnum(["owner"], {
         description: "Notification audience. Use owner for the human user.",
       })),

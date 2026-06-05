@@ -137,24 +137,24 @@ export function createBrowserTool(getSessionPath, options = {}) {
 
   return {
     name: "browser",
-    label: t("toolDef.browser.label"),
-    description: t("toolDef.browser.description"),
+    label: "Browser",
+    description: "Control a headless browser (navigate, click, type, scroll, screenshot, evaluate JS). Use the action parameter to pick an operation; see its description for per-action parameters. Element [ref] ids from snapshot become stale after any navigate/click/type — those operations auto-return a fresh snapshot, always use refs from the latest one.",
     parameters: Type.Object({
-      action: StringEnum(actionValues, { description: t("toolDef.browser.actionDesc") }),
-      url: Type.Optional(Type.String({ description: t("toolDef.browser.urlDesc") })),
-      ref: Type.Optional(Type.Number({ description: t("toolDef.browser.refDesc") })),
-      text: Type.Optional(Type.String({ description: t("toolDef.browser.textDesc") })),
+      action: StringEnum(actionValues, { description: "Which operation to run. Required params per action: navigate→url; click→ref; type→text (optional ref, pressEnter); scroll→direction (optional amount); select→ref+value; key→key; wait→(optional timeout, state); evaluate→expression. start, stop, snapshot, screenshot, show take no extra params." }),
+      url: Type.Optional(Type.String({ description: "URL (required for navigate)" })),
+      ref: Type.Optional(Type.Number({ description: "Element ref number (used for click/type/select)" })),
+      text: Type.Optional(Type.String({ description: "Input text (required for type)" })),
       direction: Type.Optional(StringEnum(
         ["up", "down"],
-        { description: t("toolDef.browser.directionDesc") },
+        { description: "Scroll direction (required for scroll)" },
       )),
-      amount: Type.Optional(Type.Number({ description: t("toolDef.browser.amountDesc") })),
-      value: Type.Optional(Type.String({ description: t("toolDef.browser.valueDesc") })),
-      key: Type.Optional(Type.String({ description: t("toolDef.browser.keyDesc") })),
-      expression: Type.Optional(Type.String({ description: t("toolDef.browser.expressionDesc") })),
-      timeout: Type.Optional(Type.Number({ description: t("toolDef.browser.timeoutDesc") })),
-      state: Type.Optional(Type.String({ description: t("toolDef.browser.stateDesc") })),
-      pressEnter: Type.Optional(Type.Boolean({ description: t("toolDef.browser.pressEnterDesc") })),
+      amount: Type.Optional(Type.Number({ description: "Scroll amount (optional for scroll, default 3)" })),
+      value: Type.Optional(Type.String({ description: "Option value (required for select)" })),
+      key: Type.Optional(Type.String({ description: "Key name (required for key), e.g. Enter, Escape, Tab, Control+a" })),
+      expression: Type.Optional(Type.String({ description: "JavaScript expression (required for evaluate)" })),
+      timeout: Type.Optional(Type.Number({ description: "Timeout in milliseconds (optional for wait, default 5000)" })),
+      state: Type.Optional(Type.String({ description: "Wait state (optional for wait): domcontentloaded / load / stable / networkidle (idle is accepted)" })),
+      pressEnter: Type.Optional(Type.Boolean({ description: "Press Enter after typing (optional for type)" })),
     }),
 
     execute: async (_toolCallId, params, _signal, _onUpdate, ctx) => {

@@ -574,12 +574,12 @@ export function createWebSearchTool({ configPath, searchConfigResolver, rateLimi
 
   return {
     name: "web_search",
-    label: t("toolDef.webSearch.label"),
-    description: t("toolDef.webSearch.description"),
+    label: "Web Search",
+    description: "Search the internet for real-time information. Use when you need the latest news, technical docs, current events, or any external knowledge not in memory.",
     parameters: Type.Object({
-      query: Type.String({ description: t("toolDef.webSearch.queryDesc") }),
+      query: Type.String({ description: "Search keywords" }),
       maxResults: Type.Optional(
-        Type.Number({ description: t("toolDef.webSearch.maxResultsDesc"), default: DEFAULT_DISPLAY_RESULTS })
+        Type.Number({ description: "Number of results to return, default 10", default: DEFAULT_DISPLAY_RESULTS })
       ),
     }),
     execute: async (_toolCallId, params) => {
