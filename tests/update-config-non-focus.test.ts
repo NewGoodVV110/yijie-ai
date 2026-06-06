@@ -381,13 +381,14 @@ describe("updateConfig with agentId", () => {
     expect(models.defaultModel).toEqual({ id: "gpt-4", provider: "openai", name: "GPT-4" });
   });
 
-  it("persistSessionMeta 写入 sessionMemoryEnabled，而不是 master&&session 组合态", async () => {
+  it("persistSessionMeta writes the path-scoped session memory flag", async () => {
     const focusAgent = {
       id: "focus",
-      memoryEnabled: false,
+      memoryEnabled: true,
       sessionMemoryEnabled: true,
     };
     const writeSessionMeta = vi.fn();
+    const getSessionMemoryEnabled = vi.fn(() => false);
     const coord = new ConfigCoordinator({
       hanakoHome: "/tmp/test",
       agentsDir: "/tmp/test/agents",
@@ -403,7 +404,7 @@ describe("updateConfig with agentId", () => {
           getSessionFile: () => "/tmp/test/agents/focus/sessions/frozen.jsonl",
         },
       }),
-      getSessionCoordinator: () => ({ writeSessionMeta }),
+      getSessionCoordinator: () => ({ getSessionMemoryEnabled, writeSessionMeta }),
       getHub: () => null,
       emitEvent: vi.fn(),
       emitDevLog: vi.fn(),
@@ -412,9 +413,49 @@ describe("updateConfig with agentId", () => {
 
     await coord.persistSessionMeta();
 
+    expect(getSessionMemoryEnabled).toHaveBeenCalledWith("/tmp/test/agents/focus/sessions/frozen.jsonl");
     expect(writeSessionMeta).toHaveBeenCalledWith(
       "/tmp/test/agents/focus/sessions/frozen.jsonl",
-      { memoryEnabled: true },
+      { memoryEnabled: false },
     );
+  });
+
+  it("setMemoryEnabled updates the current session state through SessionCoordinator", async () => {
+    const focusAgent = {
+      id: "focus",
+      setMemoryEnabled: vi.fn(),
+      memoryEnabled: true,
+      sessionMemoryEnabled: true,
+    };
+    const setSessionMemoryEnabled = vi.fn(async () => undefined);
+    const coord = new ConfigCoordinator({
+      hanakoHome: "/tmp/test",
+      agentsDir: "/tmp/test/agents",
+      getAgent: () => focusAgent,
+      getAgentById: () => null,
+      getActiveAgentId: () => "focus",
+      getAgents: () => new Map([["focus", focusAgent]]),
+      getModels: () => ({ availableModels: [], defaultModel: null }),
+      getPrefs: () => ({ getPreferences: () => ({}), savePreferences: vi.fn() }),
+      getSkills: () => ({ syncAgentSkills: vi.fn() }),
+      getSession: () => ({
+        sessionManager: {
+          getSessionFile: () => "/tmp/test/agents/focus/sessions/current.jsonl",
+        },
+      }),
+      getSessionCoordinator: () => ({ setSessionMemoryEnabled }),
+      getHub: () => null,
+      emitEvent: vi.fn(),
+      emitDevLog: vi.fn(),
+      getCurrentModel: () => null,
+    });
+
+    await coord.setMemoryEnabled(false);
+
+    expect(setSessionMemoryEnabled).toHaveBeenCalledWith(
+      "/tmp/test/agents/focus/sessions/current.jsonl",
+      false,
+    );
+    expect(focusAgent.setMemoryEnabled).not.toHaveBeenCalled();
   });
 });

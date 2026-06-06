@@ -1374,8 +1374,9 @@ export function createSessionsRoute(engine, hub = null) {
       // 会被全局 gate 混淆。
       // agentId/agentName 已从 sessionPath 解析，不依赖焦点。
       const activeModel = engine.activeSessionModel ?? engine.currentModel;
-      const frozenSessionMemoryEnabled =
-        switchedAgent?.isSessionMemoryEnabledFor?.(sessionPath) ?? engine.memoryEnabled;
+      const frozenSessionMemoryEnabled = typeof engine.getSessionMemoryEnabled === "function"
+        ? engine.getSessionMemoryEnabled(sessionPath)
+        : (switchedAgent?.isSessionMemoryEnabledFor?.(sessionPath) ?? engine.memoryEnabled);
       return c.json({
         ok: true,
         messageCount: session?.messages?.length || 0,

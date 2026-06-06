@@ -846,8 +846,11 @@ export class SessionCoordinator {
     // fresh create: 以"创建当下实际会进入 prompt 前缀的状态"为准（master && session）
     // restore: 以 session-meta 里冻结下来的 memoryEnabled 为准。
     // 这样已有 session 的 prefix 身份不会被后续 master 开关漂移打穿。
+    const restoredMemoryEnabled = restore && sessionPathForMeta
+      ? this._readSessionMemoryEnabledFromMeta(sessionPathForMeta)
+      : null;
     const frozenMemoryEnabled = restore
-      ? !!memoryEnabled
+      ? (typeof restoredMemoryEnabled === "boolean" ? restoredMemoryEnabled : !!memoryEnabled)
       : (agent.memoryMasterEnabled !== false && !!memoryEnabled);
     let restoredExperienceEnabled = false;
     let restoredExperimentFlags = null;
@@ -878,13 +881,6 @@ export class SessionCoordinator {
           ? buildDeepSeekRoleplayReasoningContext(agent)
           : null,
       });
-
-    // 切换 session 级记忆状态后立即快照 prompt（下方 promptSnapshot）。
-    // /rc 冷恢复这类"附着到旧 session"的路径不应污染当前 agent 的运行态，
-    // 因此允许在生成快照后把 agent 的 session-memory 状态回滚。
-    const creatingAgent = agent;
-    const prevSessionMemoryEnabled = creatingAgent.sessionMemoryEnabled;
-    creatingAgent.setMemoryEnabled(frozenMemoryEnabled);
 
     const baseResourceLoader = this._d.getResourceLoader();
     let restoredPermissionMode = null;
@@ -928,9 +924,6 @@ export class SessionCoordinator {
     const memoryReflectionSnapshot = (!restore && typeof agent.buildMemoryReflectionSnapshot === "function")
       ? agent.buildMemoryReflectionSnapshot({ forceMemoryEnabled: frozenMemoryEnabled })
       : null;
-    if (preserveAgentMemoryState) {
-      creatingAgent.setMemoryEnabled(prevSessionMemoryEnabled);
-    }
 
     const localeSnapshot = agent.config?.locale || getLocale();
     const skills = this._d.getSkills?.();
@@ -1674,6 +1667,39 @@ export class SessionCoordinator {
     }
   }
 
+  _readSessionMemoryEnabledFromMeta(sessionPath: any) {
+    const metaEntry = this._readSessionMetaEntrySync(sessionPath);
+    return typeof metaEntry?.memoryEnabled === "boolean" ? metaEntry.memoryEnabled : null;
+  }
+
+  getSessionMemoryEnabled(sessionPath = this.currentSessionPath) {
+    if (!sessionPath) return true;
+    const liveEntry = this._sessions.get(sessionPath);
+    if (typeof liveEntry?.memoryEnabled === "boolean") return liveEntry.memoryEnabled;
+    const hibernatedEntry = this._hibernatedSessionMeta.get(sessionPath);
+    if (typeof hibernatedEntry?.memoryEnabled === "boolean") return hibernatedEntry.memoryEnabled;
+    const stored = this._readSessionMemoryEnabledFromMeta(sessionPath);
+    return typeof stored === "boolean" ? stored : true;
+  }
+
+  async setSessionMemoryEnabled(sessionPath: any, enabled: any) {
+    if (!sessionPath) {
+      return { ok: false, error: "session memory requires sessionPath", memoryEnabled: true };
+    }
+    this._assertActiveDesktopSessionPath(sessionPath, "setSessionMemoryEnabled");
+    if (this._isDeletedAgentSessionPath(sessionPath)) {
+      throw new Error("setSessionMemoryEnabled: session belongs to a deleted agent");
+    }
+    const next = enabled !== false;
+    const liveEntry = this._sessions.get(sessionPath);
+    if (liveEntry) liveEntry.memoryEnabled = next;
+    const hibernatedEntry = this._hibernatedSessionMeta.get(sessionPath);
+    if (hibernatedEntry) hibernatedEntry.memoryEnabled = next;
+    await this.writeSessionMeta(sessionPath, { memoryEnabled: next });
+    this._emitSessionMetadataUpdated(sessionPath, { memoryEnabled: next });
+    return { ok: true, memoryEnabled: next };
+  }
+
   _updateSessionFolderRuntimeMeta(sessionPath: any, patch: any) {
     const liveEntry = this._sessions.get(sessionPath);
     if (liveEntry) {
@@ -1709,19 +1735,8 @@ export class SessionCoordinator {
       await this._d.switchAgentOnly(targetAgentId);
     }
 
-    // 从 session-meta.json 恢复记忆开关（model 由 PI SDK 从 JSONL 恢复，不在此处读取）
-    let memoryEnabled = true;
-    try {
-      const metaPath = path.join(this._d.getAgent().sessionDir, "session-meta.json");
-      const meta = await this._readMetaCached(metaPath);
-      const sessKey = path.basename(sessionPath);
-      const metaEntry = meta[sessKey];
-      if (metaEntry?.memoryEnabled === false) memoryEnabled = false;
-    } catch (err) {
-      if (err.code !== "ENOENT") {
-        log.warn(`session-meta.json 读取失败: ${err.message}`);
-      }
-    }
+    // 从 session-owned state 恢复记忆开关（model 由 PI SDK 从 JSONL 恢复，不在此处读取）
+    const memoryEnabled = this.getSessionMemoryEnabled(sessionPath);
 
     // 如果已在 map 中，切指针
     const existing = this._sessions.get(sessionPath);
@@ -1742,8 +1757,6 @@ export class SessionCoordinator {
       this._session = existing.session;
       this._currentSessionPath = sessionPath;
       existing.lastTouchedAt = Date.now();
-      const targetAgent = this._d.getAgentById(existing.agentId) || this._d.getAgent();
-      targetAgent.setMemoryEnabled(memoryEnabled);
       return existing.session;
     }
 
@@ -2860,17 +2873,9 @@ export class SessionCoordinator {
     }
     this._hibernatedSessionMeta.delete(sessionPath);
 
-    let memoryEnabled = oldEntry?.memoryEnabled ?? true;
-    try {
-      const metaPath = path.join(agent.sessionDir, "session-meta.json");
-      const meta = await this._readMetaCached(metaPath);
-      const sessKey = path.basename(sessionPath);
-      if (meta[sessKey]?.memoryEnabled === false) memoryEnabled = false;
-    } catch (err) {
-      if (err.code !== "ENOENT") {
-        log.warn(`reloadSessionRuntime: session-meta.json read failed: ${err.message}`);
-      }
-    }
+    const memoryEnabled = typeof oldEntry?.memoryEnabled === "boolean"
+      ? oldEntry.memoryEnabled
+      : this.getSessionMemoryEnabled(sessionPath);
 
     this._emitSessionHealthWarning(sessionPath);
     // #1285: 在 open 前修复坏会话的孤儿 toolResult（必须早于 SessionManager.open）
@@ -2920,18 +2925,8 @@ export class SessionCoordinator {
       throw new Error(`ensureSessionLoaded: agent "${targetAgentId}" not found`);
     }
 
-    // memoryEnabled 从 meta 恢复（跟 switchSession 同一份 meta 数据源）
-    let memoryEnabled = true;
-    try {
-      const metaPath = path.join(agent.sessionDir, "session-meta.json");
-      const meta = await this._readMetaCached(metaPath);
-      const sessKey = path.basename(sessionPath);
-      if (meta[sessKey]?.memoryEnabled === false) memoryEnabled = false;
-    } catch (err) {
-      if (err.code !== "ENOENT") {
-        log.warn(`ensureSessionLoaded: session-meta.json read failed: ${err.message}`);
-      }
-    }
+    // memoryEnabled 从 session-owned state 恢复（跟 switchSession 同一份数据源）
+    const memoryEnabled = this.getSessionMemoryEnabled(sessionPath);
 
     // 保存焦点：createSession 副作用会设 this._session / _sessionStarted，
     // /rc 这类纯 attach 路径结束后必须完整回滚，避免污染桌面 UI 的当前会话态。

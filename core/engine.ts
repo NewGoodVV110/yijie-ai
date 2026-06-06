@@ -760,6 +760,12 @@ export class HanaEngine {
   getSessionFolderScope(p = this.currentSessionPath) {
     return this._sessionCoord.getSessionFolderScope(p);
   }
+  getSessionMemoryEnabled(p = this.currentSessionPath) {
+    return this._sessionCoord.getSessionMemoryEnabled(p);
+  }
+  async setSessionMemoryEnabled(p, enabled) {
+    return this._sessionCoord.setSessionMemoryEnabled(p, enabled);
+  }
   setSessionAuthorizedFolders(p, folders) {
     return this._sessionCoord.setSessionAuthorizedFolders(p, folders);
   }
@@ -870,7 +876,10 @@ export class HanaEngine {
     return this._sessionCoord.session?.model ?? null;
   }
   get availableModels() { return this._models.availableModels; }
-  get memoryEnabled() { return this.agent.memoryEnabled; }
+  get memoryEnabled() {
+    const sessionPath = this.currentSessionPath;
+    return sessionPath ? this._sessionCoord.getSessionMemoryEnabled(sessionPath) : this.agent.memoryEnabled;
+  }
   get memoryModelUnavailableReason() { return this.agent.memoryModelUnavailableReason; }
   get planMode() { return this._sessionCoord.getPlanMode(); }
   getPrimaryAgentId() { return this._prefs.getPrimaryAgent(); }

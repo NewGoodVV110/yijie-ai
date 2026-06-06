@@ -95,6 +95,7 @@ describe("sessions route", () => {
       getSessionByPath: vi.fn((sp) => ({
         messages: [{ role: "assistant", content: "ok" }],
       })),
+      getSessionMemoryEnabled: vi.fn(() => false),
       getAgent: vi.fn(() => ({ agentName: "Hana" })),
       getSessionWorkspaceMount: vi.fn(() => ({ mountId: "mount_docs", label: "Docs" })),
       agentIdFromSessionPath: vi.fn((sp) => {
@@ -117,6 +118,8 @@ describe("sessions route", () => {
     expect(browserManagerMock.resumeForSession).toHaveBeenCalledWith("/tmp/agents/a/sessions/new.jsonl");
     expect(data.browserRunning).toBe(true); // resumeForSession sets it running
     expect(data.browserUrl).toBe("https://after.example.com"); // per-session URL
+    expect(data.memoryEnabled).toBe(false);
+    expect(engine.getSessionMemoryEnabled).toHaveBeenCalledWith("/tmp/agents/a/sessions/new.jsonl");
     expect(data.workspaceMountId).toBe("mount_docs");
     expect(data.workspaceLabel).toBe("Docs");
     expect(data.currentModelAudio).toBe(true);

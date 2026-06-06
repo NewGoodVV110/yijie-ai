@@ -193,9 +193,7 @@ describe("SessionCoordinator ensureSessionLoaded owner restore", () => {
     expect(capturedCreateOpts.resourceLoader.getSystemPrompt()).toBe("OWNER MEMORY OFF");
     expect(capturedCreateOpts.customTools.map((t) => t.name)).toEqual(["owner-tool"]);
     expect(capturedCreateOpts.resourceLoader.getSkills().skills.map((s) => s.name)).toEqual(["skill-owner"]);
-    expect(ownerAgent.setMemoryEnabled).toHaveBeenCalledTimes(2);
-    expect(ownerAgent.setMemoryEnabled).toHaveBeenNthCalledWith(1, false);
-    expect(ownerAgent.setMemoryEnabled).toHaveBeenNthCalledWith(2, true);
+    expect(ownerAgent.setMemoryEnabled).not.toHaveBeenCalled();
     expect(ownerAgent.sessionMemoryEnabled).toBe(true);
     expect(focusAgent.setMemoryEnabled).not.toHaveBeenCalled();
     expect(coordinator.session).toBe(focusSession);

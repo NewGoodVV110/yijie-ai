@@ -85,18 +85,18 @@ describe("SessionCoordinator", () => {
     expect(coordinator._sessions.get(path.join(tempDir, "idle.jsonl")).lastTouchedAt).toBeGreaterThan(1);
   });
 
-  it("applies session memory before creating the agent session", async () => {
-    let sessionMemoryEnabled = true;
+  it("builds the session prompt with path-scoped memory without mutating the agent session flag", async () => {
     const agent = {
       sessionDir: "/tmp/agent-sessions",
-      setMemoryEnabled: vi.fn((enabled) => {
-        sessionMemoryEnabled = !!enabled;
-      }),
-      buildSystemPrompt: () => sessionMemoryEnabled ? "MEMORY ON" : "MEMORY OFF",
+      memoryMasterEnabled: true,
+      sessionMemoryEnabled: true,
+      setMemoryEnabled: vi.fn(),
+      buildSystemPrompt: ({ forceMemoryEnabled }: any = {}) =>
+        forceMemoryEnabled ? "MEMORY ON" : "MEMORY OFF",
     };
 
     const resourceLoader = {
-      getSystemPrompt: () => (sessionMemoryEnabled ? "MEMORY ON" : "MEMORY OFF"),
+      getSystemPrompt: () => "BASE",
     };
 
     const coordinator = new SessionCoordinator({
@@ -126,9 +126,107 @@ describe("SessionCoordinator", () => {
 
     await coordinator.createSession(null, "/tmp/workspace", false);
 
-    expect(agent.setMemoryEnabled).toHaveBeenCalledWith(false);
+    expect(agent.setMemoryEnabled).not.toHaveBeenCalled();
     expect(createAgentSessionMock).toHaveBeenCalledOnce();
     expect(createAgentSessionMock.mock.calls[0][0].resourceLoader.getSystemPrompt()).toBe("MEMORY OFF");
+  });
+
+  it("keeps different cached session memory flags without mutating the agent session flag on switch", async () => {
+    const agentDir = path.join(tempDir, "agents", "hana");
+    const sessionDir = path.join(agentDir, "sessions");
+    const firstSessionPath = path.join(sessionDir, "memory-on.jsonl");
+    const secondSessionPath = path.join(sessionDir, "memory-off.jsonl");
+    fs.mkdirSync(sessionDir, { recursive: true });
+
+    const agent = {
+      id: "hana",
+      agentDir,
+      sessionDir,
+      memoryMasterEnabled: true,
+      sessionMemoryEnabled: true,
+      config: { tools: {} },
+      setMemoryEnabled: vi.fn(),
+      getToolsSnapshot: vi.fn(({ forceMemoryEnabled }: any = {}) =>
+        forceMemoryEnabled ? [{ name: "search_memory" }] : [{ name: "todo_write" }],
+      ),
+      buildSystemPrompt: vi.fn(({ forceMemoryEnabled }: any = {}) =>
+        forceMemoryEnabled ? "MEMORY ON" : "MEMORY OFF",
+      ),
+      tools: [],
+      _memoryTicker: { notifySessionEnd: vi.fn(async () => undefined) },
+    };
+    const model = { id: "m", provider: "test", name: "M" };
+    const coordinator = new SessionCoordinator({
+      agentsDir: path.join(tempDir, "agents"),
+      getAgent: () => agent,
+      getActiveAgentId: () => "hana",
+      getModels: () => ({
+        currentModel: model,
+        authStorage: {},
+        modelRegistry: {},
+        resolveThinkingLevel: (level) => level,
+      }),
+      getResourceLoader: () => ({
+        getSystemPrompt: () => "BASE",
+        getAppendSystemPrompt: () => [],
+        getExtensions: () => ({ extensions: [], errors: [] }),
+        getSkills: () => ({ skills: [], diagnostics: [] }),
+        getAgentsFiles: () => ({ agentsFiles: [] }),
+      }),
+      getSkills: () => null,
+      buildTools: (_cwd, customTools) => ({ tools: [], customTools }),
+      emitEvent: vi.fn(),
+      getHomeCwd: () => tempDir,
+      agentIdFromSessionPath: () => "hana",
+      switchAgentOnly: async () => {},
+      getConfig: () => ({}),
+      getPrefs: () => ({ getThinkingLevel: () => "medium" }),
+      getAgents: () => new Map([["hana", agent]]),
+      getActivityStore: () => null,
+      getAgentById: () => agent,
+      listAgents: () => [],
+    });
+
+    sessionManagerCreateMock
+      .mockReturnValueOnce({ getCwd: () => tempDir, getSessionFile: () => firstSessionPath })
+      .mockReturnValueOnce({ getCwd: () => tempDir, getSessionFile: () => secondSessionPath });
+    createAgentSessionMock
+      .mockResolvedValueOnce({
+        session: {
+          sessionManager: { getSessionFile: () => firstSessionPath, getCwd: () => tempDir },
+          subscribe: vi.fn(() => vi.fn()),
+          setActiveToolsByName: vi.fn(),
+          isStreaming: false,
+          isCompacting: false,
+          model,
+        },
+      })
+      .mockResolvedValueOnce({
+        session: {
+          sessionManager: { getSessionFile: () => secondSessionPath, getCwd: () => tempDir },
+          subscribe: vi.fn(() => vi.fn()),
+          setActiveToolsByName: vi.fn(),
+          isStreaming: false,
+          isCompacting: false,
+          model,
+        },
+      });
+
+    await coordinator.createSession(null, tempDir, true);
+    await coordinator.createSession(null, tempDir, false);
+    agent.setMemoryEnabled.mockClear();
+
+    await coordinator.switchSession(firstSessionPath);
+    expect(coordinator.getSessionMemoryEnabled(firstSessionPath)).toBe(true);
+    expect(coordinator.getSessionMemoryEnabled(secondSessionPath)).toBe(false);
+    expect(agent.setMemoryEnabled).not.toHaveBeenCalled();
+    expect(agent.sessionMemoryEnabled).toBe(true);
+
+    await coordinator.switchSession(secondSessionPath);
+    expect(coordinator.getSessionMemoryEnabled(firstSessionPath)).toBe(true);
+    expect(coordinator.getSessionMemoryEnabled(secondSessionPath)).toBe(false);
+    expect(agent.setMemoryEnabled).not.toHaveBeenCalled();
+    expect(agent.sessionMemoryEnabled).toBe(true);
   });
 
   it("uses explicit new-session thinking without changing the global default", async () => {
