@@ -35,6 +35,16 @@ describe("tool-categories constants", () => {
     );
   });
 
+  it("does not keep the removed legacy cron Agent tool in any category", () => {
+    const all = new Set([
+      ...CORE_TOOL_NAMES,
+      ...STANDARD_TOOL_NAMES,
+      ...GLOBAL_TOOL_NAMES,
+      ...OPTIONAL_TOOL_NAMES,
+    ]);
+    expect(all.has("cron")).toBe(false);
+  });
+
   it("GLOBAL_TOOL_NAMES is exactly the global setting governed whitelist", () => {
     expect(new Set(GLOBAL_TOOL_NAMES)).toEqual(new Set(["computer"]));
   });

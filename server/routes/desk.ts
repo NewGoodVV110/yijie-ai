@@ -140,22 +140,6 @@ function normalizeRouteExecutor(value) {
 function validateRouteExecutor(executor) {
   if (!executor) return null;
   if (executor.kind === "agent_session") return null;
-  if (executor.kind === "direct_action") {
-    if (executor.action === "notify") return null;
-    return `unsupported direct automation action: ${executor.action || ""}`;
-  }
-  if (executor.kind === "plugin_action") {
-    if (typeof executor.pluginId !== "string" || !executor.pluginId.trim()) {
-      return "plugin_action.pluginId required";
-    }
-    if (typeof executor.actionId !== "string" || !executor.actionId.trim()) {
-      return "plugin_action.actionId required";
-    }
-    if (executor.params !== undefined && (!executor.params || typeof executor.params !== "object" || Array.isArray(executor.params))) {
-      return "plugin_action.params must be an object";
-    }
-    return null;
-  }
   return `unsupported automation executor: ${executor.kind}`;
 }
 

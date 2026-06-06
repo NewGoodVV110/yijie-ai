@@ -1,5 +1,6 @@
 import {
   buildNotifyAgentRunPrompt,
+  buildPluginActionAgentRunPrompt,
   createAgentSessionAutomationExecutor,
 } from "./agent-run-automation.ts";
 
@@ -72,6 +73,31 @@ export function executorFromLegacyCronJob(job: any = {}) {
         action: "notify",
       },
     });
+  }
+
+  if (existing?.kind === "plugin_action") {
+    const pluginId = typeof existing.pluginId === "string" ? existing.pluginId.trim() : "";
+    const actionId = typeof existing.actionId === "string" ? existing.actionId.trim() : "";
+    if (pluginId && actionId) {
+      const prompt = buildPluginActionAgentRunPrompt({
+        pluginId,
+        actionId,
+        params: existing.params && typeof existing.params === "object" && !Array.isArray(existing.params)
+          ? existing.params
+          : {},
+      });
+      return createAgentSessionAutomationExecutor({
+        agentId: existing.agentId || actorAgentId,
+        prompt,
+        model: hasOwn(job, "model") ? clone(job.model ?? "") : "",
+        executionContext: hasOwn(job, "executionContext") ? clone(job.executionContext || null) : null,
+        migratedFrom: {
+          kind: "plugin_action",
+          pluginId,
+          actionId,
+        },
+      });
+    }
   }
 
   if (existing && existing.kind !== "agent_session") {

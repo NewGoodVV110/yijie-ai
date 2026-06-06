@@ -348,10 +348,10 @@ describe("Automation job read model", () => {
     });
   });
 
-  it("converts explicit notify direct-action executors into Agent-run automations", () => {
+  it("rejects direct-action executors on new writes", () => {
     const store = makeTmpStore();
 
-    const job = store.addJob({
+    expect(() => store.addJob({
       type: "cron",
       schedule: "0 9 * * *",
       label: "Drink Water",
@@ -373,36 +373,13 @@ describe("Automation job read model", () => {
         },
       },
       createdBy: { kind: "agent", agentId: "hana", sourceSessionPath: "/sessions/source.jsonl" },
-    } as any);
-
-    expect(job.prompt).toContain("notify");
-    expect(job.prompt).toContain("站起来活动一下");
-    expect(job.label).toBe("Drink Water");
-    expect(job.trigger).toEqual({ kind: "cron", expression: "0 9 * * *" });
-    expect(job.executor).toEqual({
-      kind: "agent_session",
-      agentId: "hana",
-      prompt: job.prompt,
-      model: "",
-      executionContext: {
-        kind: "session_workspace",
-        cwd: "/workspace",
-        workspaceFolders: [],
-        sourceSessionPath: "/sessions/source.jsonl",
-        createdByAgentId: "hana",
-      },
-      migratedFrom: {
-        kind: "direct_action",
-        action: "notify",
-      },
-    });
-    expect(job.createdBy).toEqual({ kind: "agent", agentId: "hana", sourceSessionPath: "/sessions/source.jsonl" });
+    } as any)).toThrow(/unsupported automation executor: direct_action/);
   });
 
-  it("preserves explicit plugin-action executors", () => {
+  it("rejects plugin-action executors on new writes", () => {
     const store = makeTmpStore();
 
-    const job = store.addJob({
+    expect(() => store.addJob({
       type: "cron",
       schedule: "0 18 * * *",
       actorAgentId: "hana",
@@ -419,16 +396,7 @@ describe("Automation job read model", () => {
         actionId: "create_note",
         params: { folder: "daily" },
       },
-    } as any);
-
-    expect(job.label).toBe("notes:create_note");
-    expect(job.executor).toEqual({
-      kind: "plugin_action",
-      pluginId: "notes",
-      actionId: "create_note",
-      params: { folder: "daily" },
-    });
-    expect(job.createdBy).toEqual({ kind: "agent", agentId: "hana" });
+    } as any)).toThrow(/unsupported automation executor: plugin_action/);
   });
 
   it("rejects removed file.create direct-action executors on new writes", () => {
@@ -443,7 +411,7 @@ describe("Automation job read model", () => {
         action: "file.create",
         params: { relativePath: "notes/today.md", content: "# Today\n" },
       },
-    } as any)).toThrow(/unsupported direct automation action: file\.create/);
+    } as any)).toThrow(/unsupported automation executor: direct_action/);
   });
 });
 

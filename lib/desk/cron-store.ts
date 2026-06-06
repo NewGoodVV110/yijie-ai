@@ -40,39 +40,12 @@ function deriveJobLabel({ label, prompt, executor }) {
     ? executor.params
     : null;
   if (typeof params?.title === "string" && params.title.trim()) return params.title.slice(0, 30);
-  if (
-    executor?.kind === "plugin_action"
-    && typeof executor.pluginId === "string"
-    && typeof executor.actionId === "string"
-    && executor.pluginId.trim()
-    && executor.actionId.trim()
-  ) {
-    return `${executor.pluginId.trim()}:${executor.actionId.trim()}`.slice(0, 30);
-  }
   return "";
 }
 
 function validateAutomationExecutorForWrite(executor) {
   if (!executor) return;
   if (!executor.kind || executor.kind === "agent_session") return;
-  if (executor.kind === "direct_action") {
-    if (executor.action !== "notify") {
-      throw new Error(`unsupported direct automation action: ${executor.action || ""}`);
-    }
-    return;
-  }
-  if (executor.kind === "plugin_action") {
-    if (typeof executor.pluginId !== "string" || !executor.pluginId.trim()) {
-      throw new Error("plugin_action.pluginId required");
-    }
-    if (typeof executor.actionId !== "string" || !executor.actionId.trim()) {
-      throw new Error("plugin_action.actionId required");
-    }
-    if (executor.params !== undefined && (!executor.params || typeof executor.params !== "object" || Array.isArray(executor.params))) {
-      throw new Error("plugin_action.params must be an object");
-    }
-    return;
-  }
   throw new Error(`unsupported automation executor: ${executor.kind}`);
 }
 

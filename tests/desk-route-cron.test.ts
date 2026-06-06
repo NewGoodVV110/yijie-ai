@@ -322,7 +322,7 @@ describe("desk cron route", () => {
     expect(service.getJob(job.id).enabled).toBe(false);
   });
 
-  it("adds legacy direct notify requests as Agent-run automation jobs through the cron compatibility route", async () => {
+  it("rejects direct notify executors through the cron compatibility route", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "hana-desk-cron-"));
     roots.push(root);
     const service = new StudioCronService({
@@ -365,25 +365,12 @@ describe("desk cron route", () => {
       }),
     });
 
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.job).toMatchObject({
-      prompt: expect.stringContaining("站起来活动一下"),
-      label: "Drink Water",
-      executor: {
-        kind: "agent_session",
-        agentId: "agent-a",
-        prompt: expect.stringContaining("notify"),
-        migratedFrom: {
-          kind: "direct_action",
-          action: "notify",
-        },
-      },
-      createdBy: { kind: "user" },
-    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "unsupported automation executor: direct_action" });
+    expect(service.listJobs()).toEqual([]);
   });
 
-  it("adds plugin-action automation jobs through the cron compatibility route", async () => {
+  it("rejects plugin-action executors through the cron compatibility route", async () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "hana-desk-cron-"));
     roots.push(root);
     const service = new StudioCronService({
@@ -423,19 +410,9 @@ describe("desk cron route", () => {
       }),
     });
 
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.job).toMatchObject({
-      prompt: "",
-      label: "Daily Note",
-      executor: {
-        kind: "plugin_action",
-        pluginId: "notes",
-        actionId: "create_note",
-        params: { title: "Today" },
-      },
-      createdBy: { kind: "user" },
-    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "unsupported automation executor: plugin_action" });
+    expect(service.listJobs()).toEqual([]);
   });
 
   it("rejects removed file.create direct-action jobs through the cron route", async () => {
@@ -477,7 +454,7 @@ describe("desk cron route", () => {
     });
 
     expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "unsupported direct automation action: file.create" });
+    expect(await res.json()).toEqual({ error: "unsupported automation executor: direct_action" });
     expect(service.listJobs()).toEqual([]);
   });
 });
