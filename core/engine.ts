@@ -1145,6 +1145,7 @@ export class HanaEngine {
   setPluginDevToolsEnabled(value) { return this._prefs.setPluginDevToolsEnabled(value); }
   getPluginInstallRecord(pluginId) { return this._pluginInstallRecords.get(pluginId); }
   recordPluginInstall(record) { return this._pluginInstallRecords.recordInstall(record); }
+  removePluginInstallRecord(pluginId) { return this._pluginInstallRecords.remove(pluginId); }
   getTimezone() { return this._prefs.getTimezone(); }
   setTimezone(tz) { this._prefs.setTimezone(tz); }
   getUpdateChannel() { return this._prefs.getUpdateChannel(); }
