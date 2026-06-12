@@ -155,7 +155,6 @@
         "to": "screenshot-themes/"
       }
     ],
-    "afterSign": "./scripts/notarize.cjs",
     "mac": {
       "target": [
         "dmg",
