@@ -122,7 +122,7 @@
   },
   "build": {
     "appId": "com.yijie.ai",
-    "productName": "颉AI",
+    "productName": "YijieAI",
     "asar": true,
     "npmRebuild": false,
     "afterPack": "./scripts/fix-modules.cjs",
@@ -163,7 +163,7 @@
       ],
       "category": "public.app-category.productivity",
       "icon": "desktop/src/icon.icns",
-      "artifactName": "${productName}-${version}-macOS-${arch}.${ext}",
+      "artifactName": "YijieAI-${version}-macOS-${arch}.${ext}",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "desktop/entitlements.mac.plist",
@@ -173,7 +173,13 @@
           "from": "dist-computer-use/mac-${arch}/",
           "to": "computer-use/macos/"
         }
-      ]
+      ],
+      "bundleShortVersion": "0.310.1-yj1",
+      "bundleVersion": "0.310.1-yj1",
+      "extendInfo": {
+        "CFBundleDisplayName": "颉AI",
+        "CFBundleName": "颉AI"
+      }
     },
     "dmg": {
       "title": "颉AI",
