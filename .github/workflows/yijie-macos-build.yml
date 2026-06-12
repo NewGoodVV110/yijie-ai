@@ -13,8 +13,10 @@ on:
       - 'hub/**'
       - 'plugins/**'
       - 'skills2set/**'
+      - 'packages/**'
       - 'package.json'
       - 'package-lock.json'
+      - '.github/workflows/yijie-macos-build.yml'
 
 jobs:
   macos-build:
@@ -41,26 +43,31 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build workspace packages
+        run: npm run build:packages
+
       - name: Build client bundles
         run: npm run build:client
 
       - name: Build server bundle
+        shell: bash
         run: node scripts/build-server.mjs darwin ${{ matrix.arch }}
 
       - name: Build Computer Use helper
+        shell: bash
         run: |
           HANA_COMPUTER_USE_HELPER_ARCH=${{ matrix.arch }} node scripts/build-computer-use-helper.mjs ${{ matrix.arch }}
 
       - name: Package macOS (unsigned DMG)
+        shell: bash
         run: |
           ulimit -n 65536
           npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # 无签名构建：跳过签名
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Upload artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: 颉AI-macOS-${{ matrix.label }}
@@ -70,7 +77,16 @@ jobs:
             dist/*.zip
           if-no-files-found: error
 
-      - name: List built files
+      - name: Debug - list dist
+        if: failure()
         run: |
-          echo "=== Built files ==="
-          ls -lh dist/
+          echo "=== dist/ ==="
+          ls -la dist/ || echo "dist/ not found"
+          echo "=== dist-server/ ==="
+          ls -la dist-server/ || echo "dist-server/ not found"
+          echo "=== dist-computer-use/ ==="
+          ls -la dist-computer-use/ || echo "dist-computer-use/ not found"
+          echo "=== dist-main/ ==="
+          ls -la dist-main/ || echo "dist-main/ not found"
+          echo "=== dist-renderer/ ==="
+          ls -la dist-renderer/ || echo "dist-renderer/ not found"
