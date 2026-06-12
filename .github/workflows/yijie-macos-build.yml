@@ -1,4 +1,4 @@
-name: 颉AI macOS Build (Unsigned)
+name: 颉AI Build (Unsigned)
 
 on:
   workflow_dispatch:
@@ -84,9 +84,45 @@ jobs:
           ls -la dist/ || echo "dist/ not found"
           echo "=== dist-server/ ==="
           ls -la dist-server/ || echo "dist-server/ not found"
-          echo "=== dist-computer-use/ ==="
-          ls -la dist-computer-use/ || echo "dist-computer-use/ not found"
-          echo "=== dist-main/ ==="
-          ls -la dist-main/ || echo "dist-main/ not found"
-          echo "=== dist-renderer/ ==="
-          ls -la dist-renderer/ || echo "dist-renderer/ not found"
+
+  windows-build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build workspace packages
+        run: npm run build:packages
+
+      - name: Build client bundles
+        run: npm run build:client
+
+      - name: Build server bundle
+        run: node scripts/build-server.mjs win32 x64
+
+      - name: Build Windows sandbox helper
+        run: node scripts/build-windows-sandbox-helper.mjs x64
+
+      - name: Package Windows (unsigned NSIS installer)
+        run: npx electron-builder --win nsis --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 颉AI-Windows-x64
+          retention-days: 30
+          path: |
+            dist/*.exe
+          if-no-files-found: error
