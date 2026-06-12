@@ -1,14 +1,14 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="modules/connection-csp.js"></script>
-    <title>Settings</title>
+    <title>颉AI · 设置</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="themes/warm-paper.css" id="themeSheet">
     <style>
-        /* 窗口级覆盖：settings-panel 填满整个窗口 */
+        /* 绐楀彛绾ц鐩栵細settings-panel 濉弧鏁翠釜绐楀彛 */
         body {
             --paper-texture-attachment: scroll;
             background-color: var(--bg);
@@ -38,16 +38,16 @@
         .settings-header textarea {
             -webkit-app-region: no-drag;
         }
-        /* 隐藏返回按钮（窗口有自己的关闭按钮） */
+        /* 闅愯棌杩斿洖鎸夐挳锛堢獥鍙ｆ湁鑷繁鐨勫叧闂寜閽級 */
         .settings-back-btn { display: none; }
-        /* Windows/Linux：透明标题栏覆盖层，只为承载 window controls 注入点 */
+        /* Windows/Linux锛氶€忔槑鏍囬鏍忚鐩栧眰锛屽彧涓烘壙杞?window controls 娉ㄥ叆鐐?*/
         .titlebar-minimal {
             background: transparent !important;
             background-image: none !important;
             border-bottom: none;
             z-index: 100;
         }
-        /* Windows/Linux：settings-panel 顶部让出 titlebar 高度，避免 drag 区域冲突 */
+        /* Windows/Linux锛歴ettings-panel 椤堕儴璁╁嚭 titlebar 楂樺害锛岄伩鍏?drag 鍖哄煙鍐茬獊 */
         html[data-platform="win32"] .settings-panel,
         html[data-platform="linux"] .settings-panel {
             top: 38px;
@@ -61,7 +61,7 @@
             pointer-events: auto;
             height: 38px;
         }
-        /* 加载蒙版 */
+        /* 鍔犺浇钂欑増 */
         .settings-loading-mask {
             position: fixed;
             inset: 0;
@@ -82,7 +82,7 @@
 </head>
 <body>
     <div id="react-root"></div>
-    <!-- Windows/Linux 自绘窗口控制按钮注入点：必须在 react-root 之后，否则被 React 渲染层遮蔽 -->
+    <!-- Windows/Linux 鑷粯绐楀彛鎺у埗鎸夐挳娉ㄥ叆鐐癸細蹇呴』鍦?react-root 涔嬪悗锛屽惁鍒欒 React 娓叉煋灞傞伄钄?-->
     <div class="titlebar titlebar-minimal"></div>
 
     <script src="lib/i18n.js"></script>

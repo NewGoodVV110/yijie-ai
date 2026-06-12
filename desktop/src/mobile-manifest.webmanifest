@@ -1,6 +1,6 @@
-{
-  "name": "HanaAgent",
-  "short_name": "HanaAgent",
+﻿{
+  "name": "颉AI",
+  "short_name": "颉AI",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -14,3 +14,4 @@
     }
   ]
 }
+

@@ -1,0 +1,76 @@
+name: 颉AI macOS Build (Unsigned)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'server/**'
+      - 'shared/**'
+      - 'core/**'
+      - 'lib/**'
+      - 'hub/**'
+      - 'plugins/**'
+      - 'skills2set/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  macos-build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            label: Apple-Silicon
+          - arch: x64
+            label: Intel
+
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client bundles
+        run: npm run build:client
+
+      - name: Build server bundle
+        run: node scripts/build-server.mjs darwin ${{ matrix.arch }}
+
+      - name: Build Computer Use helper
+        run: |
+          HANA_COMPUTER_USE_HELPER_ARCH=${{ matrix.arch }} node scripts/build-computer-use-helper.mjs ${{ matrix.arch }}
+
+      - name: Package macOS (unsigned DMG)
+        run: |
+          ulimit -n 65536
+          npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 无签名构建：跳过签名
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: 颉AI-macOS-${{ matrix.label }}
+          retention-days: 30
+          path: |
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
+
+      - name: List built files
+        run: |
+          echo "=== Built files ==="
+          ls -lh dist/
