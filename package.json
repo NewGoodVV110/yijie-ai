@@ -164,7 +164,7 @@
       "category": "public.app-category.productivity",
       "icon": "desktop/src/icon.icns",
       "artifactName": "YijieAI-${version}-macOS-${arch}.${ext}",
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "entitlements": "desktop/entitlements.mac.plist",
       "entitlementsInherit": "desktop/entitlements.mac.plist",
