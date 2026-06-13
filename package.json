@@ -176,8 +176,10 @@
       "bundleShortVersion": "0.310.1-yj1",
       "bundleVersion": "0.310.1-yj1",
       "extendInfo": {
+        "LSMinimumSystemVersion": "15.0",
         "CFBundleDisplayName": "颉AI",
-        "CFBundleName": "颉AI"
+        "CFBundleName": "颉AI",
+        "NSSupportsAutomaticGraphicsSwitching": true
       }
     },
     "dmg": {

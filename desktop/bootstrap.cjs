@@ -1,7 +1,14 @@
+const { app } = require("electron");
+// macOS 26+ compatibility: disable sandbox before anything else
+if (process.platform === "darwin") {
+  app.commandLine.appendSwitch("no-sandbox");
+  app.commandLine.appendSwitch("disable-gpu-sandbox");
+}
+
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { app, dialog } = require("electron");
+const { dialog } = require("electron");
 
 let diagnosticsDir = path.join(os.tmpdir(), "hanako-desktop-launch");
 let launchIntegrity = null;
