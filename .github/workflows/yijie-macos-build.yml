@@ -38,10 +38,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24.15.0"
-          cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build workspace packages
         run: npm run build:packages
@@ -58,7 +57,7 @@ jobs:
         run: |
           HANA_COMPUTER_USE_HELPER_ARCH=${{ matrix.arch }} node scripts/build-computer-use-helper.mjs ${{ matrix.arch }}
 
-      - name: Package macOS (unsigned DMG)
+      - name: Package macOS (ad-hoc signed DMG)
         shell: bash
         run: |
           ulimit -n 65536
@@ -98,7 +97,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build workspace packages
         run: npm run build:packages
