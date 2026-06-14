@@ -94,7 +94,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24.15.0"
-          cache: npm
 
       - name: Install dependencies
         run: npm install
@@ -108,10 +107,25 @@ jobs:
       - name: Build server bundle
         run: node scripts/build-server.mjs win32 x64
 
+      - name: Build Computer Use helper
+        run: node scripts/build-computer-use-helper.mjs x64
+
       - name: Build Windows sandbox helper
         run: node scripts/build-windows-sandbox-helper.mjs x64
 
+      # Windows: 下载 PortableGit（含 bash + coreutils），解压后裁剪，打包进安装包
+      - name: Download & prune PortableGit
+        run: node scripts/download-git-portable.js
+
+      # 裁剪后实测 bash + coreutils + git 仍可运行
+      - name: Smoke-test pruned PortableGit
+        run: node scripts/smoke-git-portable.mjs vendor/git-portable
+
+      - name: Generate Windows icon
+        run: npm run generate:windows-icon
+
       - name: Package Windows (unsigned NSIS installer)
+        shell: pwsh
         run: npx electron-builder --win nsis --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
